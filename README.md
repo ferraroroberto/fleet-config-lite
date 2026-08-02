@@ -50,7 +50,9 @@ Stdlib only — no venv, no dependencies.
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 
-Both failure modes are **silent** — the session runs fine, the hook just never fires:
+**Interactive sessions may not fire hooks at all.** On CLI 1.0.70 at home, non-interactive runs (`copilot -p ...`) fire the full sessionStart → userPromptSubmitted → agentStop → sessionEnd sequence, but an interactive TUI session (launched from App Launcher Lite with a browser terminal attached and the TUI painted) fired none of them. This matches open upstream bugs — [copilot-cli#991](https://github.com/github/copilot-cli/issues/991) (interactive sessionStart/End mis-timed), [copilot-cli#2201](https://github.com/github/copilot-cli/issues/2201) (sessionStart doesn't run at CLI startup), [copilot-cli#1730](https://github.com/github/copilot-cli/issues/1730) (repo-level hooks not firing). The writer here is correct and unit-tested; when a CLI update fixes interactive firing, the Board's session columns light up with no change on this side. Until then the Board degrades as designed: live sessions still appear (session-host presence), with status "unknown" and a "session state unavailable" note. Re-test after every `copilot update`.
+
+The remaining failure modes are **silent** — the session runs fine, the hook just never fires:
 
 - **No BOM.** A hook config saved as UTF-8-with-BOM is ignored. Windows PowerShell 5.1's `Set-Content -Encoding utf8` writes a BOM; the installer uses `[IO.File]::WriteAllText` (BOM-less) for exactly this reason.
 - **One dot in the filename.** `foo.session-state.json` is ignored; `foo-session-state.json` loads.

@@ -27,6 +27,10 @@ Then restart any running Copilot CLI session (hook configs load at startup).
 
 Requirements: Windows, Python 3.11+ on a real install path (the WindowsApps alias is rejected), GitHub Copilot CLI ≥ 1.0.70, `glab` authenticated against your GitLab host for the skills.
 
+### Skills can come from any repo
+
+Copilot discovers whatever sits in `~/.copilot/skills/` — the junction target is irrelevant. This repo's `skills/` is just one source; a separate team skills repo plugs in exactly the same way: junction its skill folders into `~/.copilot/skills/` (or use `copilot skill add <dir>`), and every Copilot session — including the ones App Launcher Lite's Board buttons spawn — can invoke them. `install.ps1` only ever touches junctions that point into *this* checkout, so it coexists safely with skills installed from anywhere else.
+
 ## How the session hooks work
 
 Copilot CLI fires native hooks (user scope: `~/.copilot/hooks/*.json`). The payloads are **camelCase** and carry **no event name** (verified live against CLI 1.0.70), so the rendered config passes the event as `argv[1]`:
@@ -50,7 +54,7 @@ Stdlib only — no venv, no dependencies.
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 
-**Interactive sessions may not fire hooks at all.** On CLI 1.0.70 at home, non-interactive runs (`copilot -p ...`) fire the full sessionStart → userPromptSubmitted → agentStop → sessionEnd sequence, but an interactive TUI session (launched from App Launcher Lite with a browser terminal attached and the TUI painted) fired none of them. This matches open upstream bugs — [copilot-cli#991](https://github.com/github/copilot-cli/issues/991) (interactive sessionStart/End mis-timed), [copilot-cli#2201](https://github.com/github/copilot-cli/issues/2201) (sessionStart doesn't run at CLI startup), [copilot-cli#1730](https://github.com/github/copilot-cli/issues/1730) (repo-level hooks not firing). The writer here is correct and unit-tested; when a CLI update fixes interactive firing, the Board's session columns light up with no change on this side. Until then the Board degrades as designed: live sessions still appear (session-host presence), with status "unknown" and a "session state unavailable" note. Re-test after every `copilot update`.
+**Interactive sessions may not fire hooks at all.** On CLI 1.0.70 (probed live on the original dev machine), non-interactive runs (`copilot -p ...`) fire the full sessionStart → userPromptSubmitted → agentStop → sessionEnd sequence, but an interactive TUI session (launched from App Launcher Lite with a browser terminal attached and the TUI painted) fired none of them. This matches open upstream bugs — [copilot-cli#991](https://github.com/github/copilot-cli/issues/991) (interactive sessionStart/End mis-timed), [copilot-cli#2201](https://github.com/github/copilot-cli/issues/2201) (sessionStart doesn't run at CLI startup), [copilot-cli#1730](https://github.com/github/copilot-cli/issues/1730) (repo-level hooks not firing). The writer here is correct and unit-tested; when a CLI update fixes interactive firing, the Board's session columns light up with no change on this side. Until then the Board degrades as designed: live sessions still appear (session-host presence), with status "unknown" and a "session state unavailable" note. Re-test after every `copilot update`.
 
 The remaining failure modes are **silent** — the session runs fine, the hook just never fires:
 

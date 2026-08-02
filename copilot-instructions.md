@@ -1,4 +1,4 @@
-# Global instructions (work)
+# Global instructions
 
 Seed for `%USERPROFILE%\.copilot\copilot-instructions.md` — copy or merge these
 into that file (Copilot CLI reads it in every session). Deliberately small;

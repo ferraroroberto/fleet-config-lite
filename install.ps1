@@ -57,8 +57,9 @@ Write-Host "     python      -> $python"
 
 # --- skills
 # Never overwrite a skill this repo does not own: on a machine where another
-# setup already provides issue-* skills (e.g. the full fleet-config at home),
-# an existing directory that is not a junction into THIS repo is skipped.
+# setup already provides issue-* skills (e.g. one running the full
+# fleet-config), an existing directory that is not a junction into THIS repo
+# is skipped.
 New-Item -ItemType Directory -Force -Path $skillsDir | Out-Null
 Get-ChildItem -Path (Join-Path $repo 'skills') -Directory | ForEach-Object {
     $link = Join-Path $skillsDir $_.Name

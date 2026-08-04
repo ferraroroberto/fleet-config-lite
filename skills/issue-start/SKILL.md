@@ -51,4 +51,6 @@ git checkout -b <type>/<N>-<slug>
 
 Work the issue to a verified state: run the project's own checks (tests,
 lint, byte-compile — whatever the README declares). Report failures honestly.
-When done, suggest `/issue-finish`.
+Don't run e2e per change — `/e2e` is available mid-session when a change
+plausibly touches the browser surface, and `/issue-finish` always runs its
+evaluation before the MR. When done, suggest `/issue-finish`.

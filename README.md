@@ -12,6 +12,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `hooks/_lib.py` | Payload helpers: camelCase→snake_case normalization, stdin JSON, timestamps |
 | `hook-config/session-state.template.json` | Copilot CLI hook definition (rendered with absolute paths by the installer) |
 | `skills/issue-{add,start,finish,yolo}/` | Lite GitLab (`glab`) issue-workflow skills, discovered by Copilot from `~/.copilot/skills/` |
+| `skills/e2e/` | Self-contained proportionate e2e skill: `SKILL.md` + `e2e_route.py` + the bundled `classify_e2e.py` router — see "The /e2e skill" below |
 | `copilot-instructions.md` | Seed for the global `~/.copilot/copilot-instructions.md` |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
@@ -30,6 +31,12 @@ Requirements: Windows, Python 3.11+ on a real install path (the WindowsApps alia
 ### Skills can come from any repo
 
 Copilot discovers whatever sits in `~/.copilot/skills/` — the junction target is irrelevant. This repo's `skills/` is just one source; a separate team skills repo plugs in exactly the same way: junction its skill folders into `~/.copilot/skills/` (or use `copilot skill add <dir>`), and every Copilot session — including the ones App Launcher Lite's Board buttons spawn — can invoke them. `install.ps1` only ever touches junctions that point into *this* checkout, so it coexists safely with skills installed from anywhere else.
+
+## The /e2e skill
+
+`skills/e2e/` decides, runs, and maintains a project's end-to-end tests **proportionate to the actual diff**: a target repo declares path→tier rules in its own `.fleet.toml [e2e]` table, the bundled `classify_e2e.py` maps the changed files to `skip` / `static` / `full` (anything unmatched, malformed, or empty fails safe to `full` — uncertainty always escalates, never narrows), and the skill runs only that slice. `issue-finish` and `issue-yolo` call it before every merge request; it also runs standalone (`/e2e`, `/e2e plan`, `/e2e full`). On a repo without the router, it self-heals by copying the bundled classifier in byte-verbatim.
+
+The folder is **fully self-contained** — no dependency on any other repo or checkout; junction it (the installer already does) and it works anywhere with Python 3.11+. Provenance: `classify_e2e.py` is vendored byte-verbatim from `project-scaffolding` `scripts/classify_e2e.py` @ `1159e30` (git blob `1ec97cf`); re-vendor deliberately by replacing the file whole, never by editing it.
 
 ## How the session hooks work
 

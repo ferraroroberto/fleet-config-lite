@@ -27,6 +27,15 @@ deleted, issue closed, back on an updated default branch".
 Run the project's declared gate (README/AGENTS.md — e.g. tests + lint +
 byte-compile). Red gate → stop and report; never ship on red.
 
+### 2b. E2e leg (delegated to `/e2e`)
+
+Run the `/e2e` skill — the evaluation is mandatory before any MR, the
+execution proportionate: it routes the branch diff to a tier
+(`skip`/`static`/`full`, fail-safe `full`), runs the routed slice, and keeps
+the suite right-sized. If the gate above already ran that slice, `/e2e`
+carries the result. A red slice stops the finish like a red gate; the tier +
+reason go in the final report even when the answer is `skip` or `n/a`.
+
 ### 3. Commit + push
 
 Conventional message (`<type>: <subject>`, ≤72-char first line, body bullets

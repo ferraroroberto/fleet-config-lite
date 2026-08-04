@@ -22,7 +22,10 @@ uninterrupted run.
 2. **Build:** implement the issue completely. No plan gate — but surface any
    discovery that contradicts the issue's premise instead of building on it.
 3. **Validate hard:** run the project's full verification gate. Red → fix and
-   rerun; only a green gate proceeds. Never skip, never ship on red.
+   rerun; only a green gate proceeds. Never skip, never ship on red. Then run
+   the `/e2e` skill — proportionate e2e for the diff (`skip`/`static`/`full`,
+   fail-safe `full`); it carries the gate's result if the slice already ran.
+   A red slice blocks shipping; the tier + reason go in the report.
 4. **Ship:** follow `/issue-finish` steps 1-5 — acceptance walk, docs, push,
    MR with `Closes #<N>`, merge, land back on the updated default branch.
 5. **Report:** MR URL, what shipped, what was verified, anything left open.

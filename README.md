@@ -13,6 +13,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `hook-config/session-state.template.json` | Copilot CLI hook definition (rendered with absolute paths by the installer) |
 | `skills/issue-{add,start,finish,yolo}/` | Lite GitLab (`glab`) issue-workflow skills, discovered by Copilot from `~/.copilot/skills/` |
 | `skills/e2e/` | Self-contained proportionate e2e skill: `SKILL.md` + `e2e_route.py` + the bundled `classify_e2e.py` router — see "The /e2e skill" below |
+| `skills/quick/` | Trunk-commit lane below the issue threshold: one capped, verified commit straight to the default branch (no issue, no MR), auto-escalating to the issue workflow when the change outgrows its caps — the sanctioned exception to "never commit directly to the default branch" declared in `copilot-instructions.md` |
 | `copilot-instructions.md` | Seed for the global `~/.copilot/copilot-instructions.md` |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 

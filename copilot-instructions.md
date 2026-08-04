@@ -30,7 +30,10 @@ grow it as real corrections accumulate.
   conventional commit message (`type: subject`, ≤72-char first line, body
   bullets explaining *why*).
 - One issue → one branch (`<type>/<N>-<slug>`) → one MR (`Closes #N`) →
-  squash-merge → branch deleted. Never commit directly to the default branch.
+  squash-merge → branch deleted. Never commit directly to the default branch
+  — the one sanctioned exception is the `/quick` skill (below-issue-threshold
+  trunk commit: explicit invocation is the authorization; its SKILL.md owns
+  the size caps, mandatory verification, and escalate-to-issue rule).
 - No AI attribution trailers in commit messages.
 
 ## Issue workflow

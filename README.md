@@ -1,6 +1,6 @@
 # fleet-config-lite
 
-Minimal companion repo for [app-launcher-lite](https://github.com/ferraroroberto/app-launcher-lite): the GitHub-Copilot-CLI-side machinery that makes the lite Board's session columns and the issue workflow work. No LLM calls, no schedulers, no chief — just hooks, skills, and an installer.
+Minimal companion repo for [app-launcher-lite](https://github.com/ferraroroberto/app-launcher-lite): the GitHub-Copilot-CLI-side machinery that makes the lite Board's session columns and the issue workflow work. No LLM calls, no schedulers, no chief — just hooks, skills, and an installer. (`skills/learning-log/` is a deliberate, narrow exception to "no LLM calls" — see its own section below — and, like every skill here, is manual-invoke only.)
 
 Downscaled from the private `fleet-config`; when a capability is missing here, port it from there deliberately rather than re-inventing it.
 
@@ -14,6 +14,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `skills/issue-{add,start,finish,yolo}/` | Lite GitLab (`glab`) issue-workflow skills, discovered by Copilot from `~/.copilot/skills/` |
 | `skills/e2e/` | Self-contained proportionate e2e skill: `SKILL.md` + `e2e_route.py` + the bundled `classify_e2e.py` router — see "The /e2e skill" below |
 | `skills/quick/` | Trunk-commit lane below the issue threshold: one capped, verified commit straight to the default branch (no issue, no MR), auto-escalating to the issue workflow when the change outgrows its caps — the sanctioned exception to "never commit directly to the default branch" declared in `copilot-instructions.md` |
+| `skills/learning-log/` | Host-agnostic (GitHub or GitLab) learning log + productivity stats from this repo's sibling-repo work stream: `SKILL.md` + self-contained `gather.py` — see "The /learning-log skill" below |
 | `copilot-instructions.md` | Seed for the global `~/.copilot/copilot-instructions.md` |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
@@ -38,6 +39,12 @@ Copilot discovers whatever sits in `~/.copilot/skills/` — the junction target 
 `skills/e2e/` decides, runs, and maintains a project's end-to-end tests **proportionate to the actual diff**: a target repo declares path→tier rules in its own `.fleet.toml [e2e]` table, the bundled `classify_e2e.py` maps the changed files to `skip` / `static` / `full` (anything unmatched, malformed, or empty fails safe to `full` — uncertainty always escalates, never narrows), and the skill runs only that slice. `issue-finish` and `issue-yolo` call it before every merge request; it also runs standalone (`/e2e`, `/e2e plan`, `/e2e full`). On a repo without the router, it self-heals by copying the bundled classifier in byte-verbatim.
 
 The folder is **fully self-contained** — no dependency on any other repo or checkout; junction it (the installer already does) and it works anywhere with Python 3.11+. Provenance: `classify_e2e.py` is vendored byte-verbatim from `project-scaffolding` `scripts/classify_e2e.py` @ `1159e30` (git blob `1ec97cf`); re-vendor deliberately by replacing the file whole, never by editing it.
+
+## The /learning-log skill
+
+`skills/learning-log/` is a host-agnostic port of the private `fleet-config`'s `.claude/skills/learning-log`: on manual invocation it reads merged PRs/MRs + closed issues since the last run — across this repo and its public siblings under the same owner/group — computes exact bucketed productivity stats, fans out one insight sub-agent per work-type bucket, and upserts a ledger issue + weekly-shaped comment. `gather.py` detects whether this repo's `origin` remote is GitHub or GitLab (`git remote get-url origin`) and drives `gh` or `glab` accordingly; the GitHub path is exercised live against this repo, the GitLab path follows `glab`'s documented CLI shape but isn't live-tested here (`glab` isn't installed on this dev machine, the same caveat already accepted for this repo's other `glab`-based skills).
+
+It is a deliberate, narrow exception to this repo's "no LLM calls" principle — the insight-extraction step is model-agnostic (never hardcodes a vendor/model name) and low-effort by design — but keeps "no schedulers": there is no unattended entry point, only `/learning-log`.
 
 ## How the session hooks work
 

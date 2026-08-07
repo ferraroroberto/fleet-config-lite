@@ -24,10 +24,22 @@ with zero manual git bookkeeping.
 
 ### 2. Sync the default branch
 
+Resolve the default branch rather than guessing it — `git symbolic-ref --short
+refs/remotes/origin/HEAD` prints `origin/<branch>`; check out the part after
+`origin/`:
+
 ```
-git checkout main 2>nul || git checkout master
+git symbolic-ref --short refs/remotes/origin/HEAD
+git checkout <default-branch>
 git pull --ff-only
 ```
+
+If `origin/HEAD` isn't set locally, `git remote set-head origin --auto` fixes
+it; the portable fallback is `git checkout main || git checkout master`.
+**Never write `2>nul`** — it's cmd.exe-only syntax, and a POSIX shell (Git
+Bash, the shell an agent often gets on Windows) treats `nul` as a filename and
+creates an untracked `nul` in the repo root, which makes the *next* run's
+dirty-tree check refuse to start.
 
 A dirty tree stops here: report the dirty files and let the user decide.
 

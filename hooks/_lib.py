@@ -17,7 +17,7 @@ name field** (verified live against Copilot CLI 1.0.70, 2026-08-01):
 
 ``timestamp`` is epoch milliseconds. Because the payload does not name its
 own event, the hook-config JSON passes the event name as ``argv[1]`` to the
-hook script — see ``hook-config/session-state.json``.
+hook script — see ``hook-config/session-state.template.json``.
 
 ``normalize_payload`` converts the camelCase envelope to the snake_case
 vocabulary the writers read (``session_id``, ``cwd``, ``transcript_path``),
@@ -29,9 +29,8 @@ from __future__ import annotations
 import json
 import re
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 _CAMEL_BOUNDARY = re.compile(r"(?<!^)(?=[A-Z])")
 
@@ -86,17 +85,6 @@ def read_stdin_json() -> Dict[str, Any]:
     if not isinstance(data, dict):
         return {}
     return normalize_payload(data)
-
-
-def payload_timestamp(payload: Dict[str, Any]) -> Optional[datetime]:
-    """The payload's own epoch-milliseconds timestamp as an aware datetime."""
-    raw = payload.get("timestamp")
-    if isinstance(raw, (int, float)) and raw > 0:
-        try:
-            return datetime.fromtimestamp(raw / 1000.0, tz=timezone.utc)
-        except (OverflowError, OSError, ValueError):
-            return None
-    return None
 
 
 def cwd(payload: Dict[str, Any]) -> Path:

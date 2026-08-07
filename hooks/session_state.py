@@ -8,7 +8,8 @@ columns without owning any hook plumbing. The Board only *reads* the file;
 this module is the only writer.
 
 Copilot CLI payloads carry no event-name field, so the hook config
-(``hook-config/session-state.json``) passes the event name as ``argv[1]``:
+(``hook-config/session-state.template.json``) passes the event name as
+``argv[1]``:
 
 * ``userPromptSubmitted`` → status ``working`` (you handed Copilot the turn).
 * ``agentStop``           → status ``needs-you`` (Copilot finished a turn).

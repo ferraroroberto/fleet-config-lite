@@ -9,7 +9,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | Path | Role |
 |---|---|
 | `hooks/session_state.py` | **Sole writer** of `sessions-state.json` — one row per live Copilot session (`working` / `needs-you` / `idle`), consumed read-only by app-launcher-lite's Board |
-| `hooks/_lib.py` | Payload helpers: camelCase→snake_case normalization, stdin JSON, timestamps |
+| `hooks/_lib.py` | Payload helpers: camelCase→snake_case normalization, stdin JSON, cwd resolution |
 | `hook-config/session-state.template.json` | Copilot CLI hook definition (rendered with absolute paths by the installer) |
 | `skills/issue-{add,start,finish,yolo}/` | Lite GitLab (`glab`) issue-workflow skills, discovered by Copilot from `~/.copilot/skills/` |
 | `skills/e2e/` | Self-contained proportionate e2e skill: `SKILL.md` + `e2e_route.py` + the bundled `classify_e2e.py` router — see "The /e2e skill" below |

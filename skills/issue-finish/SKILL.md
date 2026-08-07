@@ -58,8 +58,16 @@ default branch. If the project has no pipeline, merge directly
 
 ### 5. Land
 
+Resolve the default branch rather than guessing it — `git symbolic-ref --short
+refs/remotes/origin/HEAD` prints `origin/<branch>`; check out the part after
+`origin/` (fallback `git checkout main || git checkout master`). **Never write
+`2>nul`**: it's cmd.exe-only, and a POSIX shell (Git Bash) treats `nul` as a
+filename and leaves an untracked `nul` behind that blocks the next run's
+dirty-tree check.
+
 ```
-git checkout main 2>nul || git checkout master
+git symbolic-ref --short refs/remotes/origin/HEAD
+git checkout <default-branch>
 git pull --ff-only
 git branch -d <branch>
 git fetch --prune

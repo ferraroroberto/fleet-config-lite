@@ -13,9 +13,9 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `hook-config/session-state.template.json` | Copilot CLI hook definition (rendered with absolute paths by the installer) |
 | `skills/issue-{add,start,finish,yolo}/` | Lite GitLab (`glab`) issue-workflow skills, discovered by Copilot from `~/.copilot/skills/` |
 | `skills/e2e/` | Self-contained proportionate e2e skill: `SKILL.md` + `e2e_route.py` + the bundled `classify_e2e.py` router — see "The /e2e skill" below |
-| `skills/quick/` | Trunk-commit lane below the issue threshold: one capped, verified commit straight to the default branch (no issue, no MR), auto-escalating to the issue workflow when the change outgrows its caps — the sanctioned exception to "never commit directly to the default branch" declared in `copilot-instructions.md` |
+| `skills/quick/` | Trunk-commit lane below the issue threshold: one capped, verified commit straight to the default branch (no issue, no MR), auto-escalating to the issue workflow when the change outgrows its caps — the sanctioned exception to "never commit directly to the default branch" declared in `global-instructions.md` |
 | `skills/learning-log/` | Host-agnostic (GitHub or GitLab) learning log + productivity stats from this repo's sibling-repo work stream: `SKILL.md` + self-contained `gather.py` — see "The /learning-log skill" below |
-| `copilot-instructions.md` | Seed for the global `~/.copilot/copilot-instructions.md` |
+| `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -29,6 +29,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
 Then restart any running Copilot CLI session (hook configs load at startup).
 
 Requirements: Windows, Python 3.11+ on a real install path (the WindowsApps alias is rejected), GitHub Copilot CLI ≥ 1.0.70, `glab` authenticated against your GitLab host for the skills.
+
+`install.ps1` also links `global-instructions.md` into `~/.copilot/copilot-instructions.md` (symlink, falling back to a plain copy if symlinks aren't available). If that path already belongs to something else — most commonly the private `fleet-config` linking its own, larger `global-CLAUDE.md` there — the installer detects it isn't ours and prints `[skip]` rather than overwriting it.
+
+## The global instructions file
+
+`global-instructions.md` is a small, agent-agnostic seed — the lite counterpart of `fleet-config`'s `global-CLAUDE.md`. It names no specific agent: `install.ps1` links it to Copilot CLI's `copilot-instructions.md` today, and the same file can be junctioned or copied by hand to `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, or `~/.pi/agent/AGENTS.md` if you use those agents too — fleet-config-lite doesn't auto-wire them since its own hooks/skills are Copilot-CLI-specific. Deliberately small; grow it as real corrections accumulate, don't port the private fleet-config's fleet-wide sections (multi-repo map, local LLM hub, design system, etc.) — those are out of scope here.
 
 ### Skills can come from any repo
 

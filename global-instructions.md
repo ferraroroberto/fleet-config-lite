@@ -1,8 +1,13 @@
 # Global instructions
 
-Seed for `%USERPROFILE%\.copilot\copilot-instructions.md` — copy or merge these
-into that file (Copilot CLI reads it in every session). Deliberately small;
-grow it as real corrections accumulate.
+Canonical, agent-agnostic source of the global instructions for repos wired
+up by fleet-config-lite. `install.ps1` links this file to
+`%USERPROFILE%\.copilot\copilot-instructions.md` so GitHub Copilot CLI reads
+it in every session. The content itself names no agent — if you also use
+Claude Code, Codex, or Pi, junction or copy this same file to
+`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, or `~/.pi/agent/AGENTS.md`
+(fleet-config-lite doesn't auto-wire those; it only supports Copilot CLI
+today). Deliberately small; grow it as real corrections accumulate.
 
 ## Working method
 
@@ -24,11 +29,19 @@ grow it as real corrections accumulate.
 - Implement only what was asked. Three similar lines beat a premature
   abstraction.
 
+## Markdown for issues/PRs
+
+- Rendered issue/MR bodies (GitHub or GitLab) are not hard-wrapped —
+  paragraphs are single long lines; newlines only between paragraphs, list
+  items, and inside code fences.
+
 ## Git discipline
 
 - Never commit or push without being asked — prepare a ready-to-copy
   conventional commit message (`type: subject`, ≤72-char first line, body
   bullets explaining *why*).
+- Never run a destructive git operation (`reset --hard`, force-push,
+  `clean -f`) without asking first.
 - One issue → one branch (`<type>/<N>-<slug>`) → one MR (`Closes #N`) →
   squash-merge → branch deleted. Never commit directly to the default branch
   — the one sanctioned exception is the `/quick` skill (below-issue-threshold

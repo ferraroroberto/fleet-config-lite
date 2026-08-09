@@ -6,7 +6,11 @@
 #    (user-level hooks are the reliable location: repo-level .github/hooks
 #    did not fire in non-interactive mode on Copilot CLI 1.0.70).
 # 2. Ensures the state directory %USERPROFILE%\.copilot\hooks\state exists.
-# 3. Junctions skills/ into %USERPROFILE%\.copilot\skills\<skill> so Copilot
+# 3. Links global-instructions.md into %USERPROFILE%\.copilot\copilot-instructions.md
+#    (symlink, falls back to copy) so Copilot CLI picks it up every session.
+#    Skipped if that path is already owned by something else (e.g. the
+#    private fleet-config linking its own global-CLAUDE.md there).
+# 4. Junctions skills/ into %USERPROFILE%\.copilot\skills\<skill> so Copilot
 #    discovers the lite issue skills in every session (falls back to copy if
 #    the junction fails, e.g. on a filesystem without junction support).
 #
@@ -54,6 +58,42 @@ $target = Join-Path $hooksDir 'fleet-config-lite-session-state.json'
 [System.IO.File]::WriteAllText($target, $rendered)
 Write-Host "[ok] hook config -> $target"
 Write-Host "     python      -> $python"
+
+# --- global instructions
+# Never overwrite a SYMLINKED instructions file this repo does not own: on a
+# machine where the private fleet-config already links its own
+# global-CLAUDE.md into ~/.copilot/copilot-instructions.md, that link wins
+# and this step no-ops. A plain (non-symlink) file at the target is always
+# treated as ours and refreshed -- this is what a non-elevated machine gets
+# on every run (file symlinks need admin or Developer Mode; junctions, used
+# for skills/ below, don't), so "ours" can't be judged by link type alone
+# there. This replaces the old manual "copy or merge by hand" seed workflow.
+$instructionsSource = Join-Path $repo 'global-instructions.md'
+$instructionsTarget = Join-Path $copilotHome 'copilot-instructions.md'
+$skipInstructions = $false
+if (Test-Path $instructionsTarget) {
+    $item = Get-Item $instructionsTarget -Force
+    if ($item.LinkType -eq 'SymbolicLink') {
+        $ours = $item.Target -like "*$instructionsSource*"
+        if ($ours) {
+            Write-Host "[ok] copilot-instructions.md already linked -> $instructionsTarget"
+        } else {
+            Write-Host "[skip] copilot-instructions.md exists and is not ours -> $instructionsTarget"
+        }
+        $skipInstructions = $true
+    } else {
+        Remove-Item $instructionsTarget -Force
+    }
+}
+if (-not $skipInstructions) {
+    try {
+        New-Item -ItemType SymbolicLink -Path $instructionsTarget -Target $instructionsSource | Out-Null
+        Write-Host "[ok] instructions symlink -> $instructionsTarget"
+    } catch {
+        Copy-Item $instructionsSource $instructionsTarget
+        Write-Host "[ok] instructions copied  -> $instructionsTarget (symlink unavailable)"
+    }
+}
 
 # --- skills
 # Never overwrite a skill this repo does not own: on a machine where another

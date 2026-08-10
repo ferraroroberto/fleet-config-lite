@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fieldkit · Rollout</title>
+<!-- ==slides:bootstrap== -->
+<script>
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem("slides-demo.theme"); } catch (e) {}
+    if (t !== "dark" && t !== "light") {
+      t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+  })();
+</script>
+<!-- ==/slides:bootstrap== -->
+<style>
+/* ==slides:tokens== */
+:root {
+  /* SINGLE source of brand color — replace per client in private context */
+  --brand: #1F7A54;       /* placeholder: deep green */
+  --brand-dark: #0B2E21;  /* placeholder: deep green-black */
+
+  /* light bases */
+  --bg: color-mix(in srgb, var(--brand) 8%, #ffffff);
+  --slide: #ffffff;
+  --ink: var(--brand-dark);
+  --accent: var(--brand);
+  --deep: var(--brand-dark);
+  --on-accent: #ffffff;
+
+  /* derived, theme-agnostic — recompute automatically per theme */
+  --muted: color-mix(in srgb, var(--ink) 68%, var(--slide));
+  --faint: color-mix(in srgb, var(--ink) 50%, var(--slide));
+  --soft:  color-mix(in srgb, var(--accent) 12%, var(--slide));
+  --line:  color-mix(in srgb, var(--accent) 25%, var(--slide));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: color-mix(in srgb, var(--brand-dark) 30%, #000000);
+    --slide: color-mix(in srgb, var(--brand-dark) 55%, #000000);
+    --ink: color-mix(in srgb, var(--brand) 12%, #ffffff);
+    --accent: oklch(from var(--brand) calc(l + 0.16) c h);
+    --deep: oklch(from var(--brand) calc(l + 0.30) c h);
+    --on-accent: var(--bg);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: color-mix(in srgb, var(--brand-dark) 30%, #000000);
+  --slide: color-mix(in srgb, var(--brand-dark) 55%, #000000);
+  --ink: color-mix(in srgb, var(--brand) 12%, #ffffff);
+  --accent: oklch(from var(--brand) calc(l + 0.16) c h);
+  --deep: oklch(from var(--brand) calc(l + 0.30) c h);
+  --on-accent: var(--bg);
+}
+:root[data-theme="light"] {
+  --bg: color-mix(in srgb, var(--brand) 8%, #ffffff);
+  --slide: #ffffff;
+  --ink: var(--brand-dark);
+  --accent: var(--brand);
+  --deep: var(--brand-dark);
+  --on-accent: #ffffff;
+}
+/* ==/slides:tokens== */
+
+/* ==slides:base== */
+body {
+  background: var(--bg); min-height: 100vh; margin: 0; overflow: hidden;
+  display: grid; place-items: center; padding: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+.slide {
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+  background: var(--slide); color: var(--ink);
+  display: flex; flex-direction: column;
+  padding: 3.2cqw 3.6cqw 2.4cqw; box-sizing: border-box; overflow: hidden;
+}
+svg { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.theme-toggle {
+  position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px;
+  border-radius: 50%; background: var(--slide); border: 1px solid var(--line);
+  color: var(--ink); display: grid; place-items: center; cursor: pointer;
+  padding: 0; z-index: 10;
+}
+.theme-toggle svg { width: 20px; height: 20px; }
+.theme-toggle .sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .sun { display: block; }
+:root[data-theme="dark"] .theme-toggle .moon { display: none; }
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media print { .theme-toggle { display: none; } }
+
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 1.2cqw; }
+.eyebrow {
+  font-size: 1.5cqw; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .16em; color: var(--accent);
+}
+h1 {
+  font-size: 3.1cqw; font-weight: 700; letter-spacing: -.015em;
+  line-height: 1.1; color: var(--ink); margin: .6cqw 0 0;
+}
+h1 .hl { color: var(--accent); }
+.thesis { font-size: 2cqw; color: var(--muted); margin: .9cqw 0 0; }
+
+.footer {
+  margin-top: auto; display: flex; align-items: center; gap: .8cqw;
+  font-size: 1.6cqw; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.footer svg { width: 1.8cqw; height: 1.8cqw; flex: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+/* ==/slides:base== */
+
+/* Per-slide layout CSS goes below this line; it is NOT propagated. */
+.pipeline { position: relative; margin-top: auto; }
+.pipeline .rail { position: absolute; top: 3.4cqw; left: calc(100% / 10); right: calc(100% / 10); height: 2px; background: var(--line); }
+.pipeline .row { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.2cqw; }
+.step { text-align: center; }
+.disc { position: relative; width: 6.8cqw; height: 6.8cqw; margin: 0 auto; border-radius: 50%; background: var(--soft); border: 2px solid var(--accent); display: grid; place-items: center; }
+.disc svg { width: 3.2cqw; height: 3.2cqw; color: var(--accent); }
+.badge { position: absolute; top: -.5cqw; right: -.5cqw; width: 2.2cqw; height: 2.2cqw; border-radius: 50%; background: var(--deep); color: var(--slide); display: grid; place-items: center; font-size: 1.3cqw; font-weight: 700; font-variant-numeric: tabular-nums; }
+.step h3 { font-size: 2cqw; font-weight: 700; margin: 1.1cqw 0 .35cqw; }
+.step p { font-size: 1.55cqw; line-height: 1.35; color: var(--muted); margin: 0 auto; max-width: 16cqw; }
+.step.final .disc { background: var(--accent); }
+.step.final .disc svg { color: var(--on-accent); }
+.step.final .badge { background: var(--ink); color: var(--slide); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .step.final .badge { background: var(--bg); color: var(--ink); }
+}
+:root[data-theme="dark"] .step.final .badge { background: var(--bg); color: var(--ink); }
+.loopback { position: relative; margin: 2cqw calc(100% / 10) 0; height: 2.8cqw; border: 2px dashed var(--line); border-top: none; border-radius: 0 0 12px 12px; }
+.loopback span { position: absolute; left: 50%; bottom: -1cqw; transform: translateX(-50%); background: var(--slide); padding: 0 1cqw; font-size: 1.4cqw; color: var(--muted); white-space: nowrap; }
+</style>
+</head>
+<body>
+<!-- ==slides:toggle== -->
+<button class="theme-toggle" type="button" aria-label="Toggle color theme">
+  <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+  <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+</button>
+<!-- ==/slides:toggle== -->
+
+<div class="slide">
+  <div class="top">
+    <div class="eyebrow">Rollout</div>
+  </div>
+  <h1>Five steps from box to <span class="hl">first reading</span></h1>
+  <p class="thesis">Each site follows the same path, so every install looks the same.</p>
+
+  <div class="pipeline">
+    <div class="rail"></div>
+    <div class="row">
+    <div class="step">
+      <div class="disc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg><span class="badge">1</span></div>
+      <h3>Unbox</h3>
+      <p>Kit arrives with parts pre-labelled per site</p>
+    </div>
+    <div class="step">
+      <div class="disc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><span class="badge">2</span></div>
+      <h3>Mount</h3>
+      <p>Brackets fix to rail or wall, no drilling</p>
+    </div>
+    <div class="step">
+      <div class="disc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span class="badge">3</span></div>
+      <h3>Pair</h3>
+      <p>Sensors find the gateway on their own</p>
+    </div>
+    <div class="step">
+      <div class="disc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg><span class="badge">4</span></div>
+      <h3>Calibrate</h3>
+      <p>Readings checked against a handheld probe</p>
+    </div>
+    <div class="step final">
+      <div class="disc"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span class="badge">5</span></div>
+      <h3>Go live</h3>
+      <p>Dashboard starts recording within the hour</p>
+    </div>
+    </div>
+  </div>
+  <div class="loopback"><span>Calibration repeats at the start of each season</span></div>
+
+  <div class="footer">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+    <span>Fieldkit rollout · one path for every site.</span>
+  </div>
+</div>
+
+<!-- ==slides:toggle-script== -->
+<script>
+  (function () {
+    var btn = document.querySelector(".theme-toggle");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      var root = document.documentElement;
+      var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem("slides-demo.theme", next); } catch (e) {}
+    });
+  })();
+</script>
+<!-- ==/slides:toggle-script== -->
+
+<!-- deck-nav -->
+<script>
+  (function () {
+    var slides = ["s01-rollout.html", "s02-value.html", "s03-pilot.html"];
+    var here = location.pathname.split("/").pop().toLowerCase();
+    var i = slides.indexOf(here);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" || e.key === "Home") { location.href = "s00-nav.html"; return; }
+      var isSpace = e.key === " ";
+      if (isSpace && document.activeElement && document.activeElement.tagName === "BUTTON") return;
+      var d = 0;
+      if (e.key === "ArrowRight" || e.key === "PageDown" || isSpace) d = 1;
+      else if (e.key === "ArrowLeft" || e.key === "PageUp") d = -1;
+      else return;
+      e.preventDefault();
+      if (i === -1) return;
+      var j = i + d;
+      if (j < 0) { location.href = "s00-nav.html"; return; }
+      if (j >= slides.length) return;
+      location.href = slides[j];
+    });
+  })();
+</script>
+</body>
+</html>

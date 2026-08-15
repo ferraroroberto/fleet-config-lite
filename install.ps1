@@ -2,7 +2,7 @@
 #
 # 1. Renders hook-config/session-state.template.json with this checkout's
 #    absolute path and a resolved Python executable, into
-#    %USERPROFILE%\.copilot\hooks\fleet-config-lite.session-state.json
+#    %USERPROFILE%\.copilot\hooks\fleet-config-lite-session-state.json
 #    (user-level hooks are the reliable location: repo-level .github/hooks
 #    did not fire in non-interactive mode on Copilot CLI 1.0.70).
 # 2. Ensures the state directory %USERPROFILE%\.copilot\hooks\state exists.

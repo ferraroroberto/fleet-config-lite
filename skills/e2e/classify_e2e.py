@@ -213,11 +213,24 @@ def classify(paths: list[str], config: E2EConfig) -> Routing:
 
 
 # --------------------------------------------------------------------- git diff
+# This module is copied byte-identical into adopter repos (fleet-config's
+# `e2e_route.py bootstrap`, then hash-verified against this file), so it must
+# stay self-contained -- it deliberately does NOT import this repo's shared
+# `src/no_window.py`, which would not resolve in a consumer's tree. Deriving
+# the flag locally here is the documented vendor-verbatim exception, not drift.
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+
 def _run_git(args: list[str]) -> list[str]:
+    # The gate runs this 4-5 times per invocation (symbolic-ref, rev-parse, two
+    # diffs, ls-files). A console-less parent -- a tray, a scheduled task, an
+    # agent shell -- would get a console window flashed for each one without
+    # CREATE_NO_WINDOW; the closed stdin stops git ever waiting on a prompt.
     try:
         out = subprocess.run(
             ["git", *args],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
+            stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW,
         )
     except OSError:
         return []

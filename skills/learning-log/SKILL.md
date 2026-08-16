@@ -87,9 +87,9 @@ a bug.
 ### 1. Gather + stat the work stream
 
 ```
-python skills/learning-log/gather.py probe                              # sanity check: HOST/OWNER/REPO_FULL
-python skills/learning-log/gather.py gather                              # auto window
-python skills/learning-log/gather.py gather --since 2026-05-01           # override (backfill/validation)
+python <base-dir>/gather.py probe                         # sanity check: HOST/OWNER/REPO_FULL
+python <base-dir>/gather.py gather                         # auto window
+python <base-dir>/gather.py gather --since 2026-05-01      # override (backfill/validation)
 ```
 
 `gather.py` detects the host (GitHub vs GitLab) from `git remote get-url
@@ -164,7 +164,7 @@ Write the new horizon bullets to `horizon.md` and the discovery bullets to
 archive + stamp `last-run-at`:
 
 ```
-python skills/learning-log/gather.py assemble-ledger \
+python <base-dir>/gather.py assemble-ledger \
   --horizon-file <OUT_DIR>/horizon.md --discoveries-file <OUT_DIR>/discoveries.md \
   --out <OUT_DIR>/ledger-body.md
 ```
@@ -174,14 +174,14 @@ Then upsert the one canonical ledger issue (found/created by the fixed
 target repo if it doesn't exist yet):
 
 ```
-python skills/learning-log/gather.py upsert-ledger --body-file <OUT_DIR>/ledger-body.md
+python <base-dir>/gather.py upsert-ledger --body-file <OUT_DIR>/ledger-body.md
 ```
 
 Capture `LEDGER_NUMBER` / `LEDGER_URL`. Post the digest as a comment (the
 running record):
 
 ```
-python skills/learning-log/gather.py comment --issue <LEDGER_NUMBER> --body-file <digest file>
+python <base-dir>/gather.py comment --issue <LEDGER_NUMBER> --body-file <digest file>
 ```
 
 Capture `COMMENT_URL`.

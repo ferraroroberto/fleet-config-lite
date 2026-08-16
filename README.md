@@ -45,7 +45,7 @@ Copilot discovers whatever sits in `~/.copilot/skills/` — the junction target 
 
 `skills/e2e/` decides, runs, and maintains a project's end-to-end tests **proportionate to the actual diff**: a target repo declares path→tier rules in its own `.fleet.toml [e2e]` table, the bundled `classify_e2e.py` maps the changed files to `skip` / `static` / `full` (anything unmatched, malformed, or empty fails safe to `full` — uncertainty always escalates, never narrows), and the skill runs only that slice. `issue-finish` and `issue-yolo` call it before every merge request; it also runs standalone (`/e2e`, `/e2e plan`, `/e2e full`). On a repo without the router, it self-heals by copying the bundled classifier in byte-verbatim.
 
-The folder is **fully self-contained** — no dependency on any other repo or checkout; junction it (the installer already does) and it works anywhere with Python 3.11+. Provenance: `classify_e2e.py` is vendored byte-verbatim from `project-scaffolding` `scripts/classify_e2e.py` @ `1159e30` (git blob `1ec97cf`); re-vendor deliberately by replacing the file whole, never by editing it.
+The folder is **fully self-contained** — no dependency on any other repo or checkout; junction it (the installer already does) and it works anywhere with Python 3.11+. Provenance: `classify_e2e.py` is vendored byte-verbatim from `project-scaffolding` `scripts/classify_e2e.py` @ `6e3b3e0` (git blob `e61e182`); re-vendor deliberately by replacing the file whole, never by editing it.
 
 ## The /learning-log skill
 

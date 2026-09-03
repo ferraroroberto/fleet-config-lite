@@ -54,3 +54,7 @@ today). Deliberately small; grow it as real corrections accumulate.
 `/issue-add` (file it), `/issue-start N` (branch + context), `/issue-finish`
 (gate + MR + merge), `/issue-yolo N` (end-to-end, no plan gate, gate still
 mandatory) — installed from this repo's `skills/` by `install.ps1`.
+Resting-state quality: `/codebase-audit` (gated, at most four living
+backlog issues per repo), `/audit-fleet` (siblings, capped per run),
+`/cleanup-fleet <bucket>` (one repo per run) — never re-audit a repo that
+has not grown.

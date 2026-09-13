@@ -124,6 +124,7 @@ The remaining failure modes are **silent** — the session runs fine, the hook j
 - **One dot in the filename.** `foo.session-state.json` is ignored; `foo-session-state.json` loads.
 - Hook configs load at CLI startup only — restart the session after installing.
 - Payloads carry no event-name field; the config passes the event as `argv[1]`.
+- **No stdin pipe in the hook command.** Copilot runs the `powershell` key under pwsh 7 (CLI 1.0.83). `[Console]::In.ReadToEnd() | python ...` decodes the payload with the console's OEM code page first, garbling any non-ASCII prompt or cwd (`???` in 5.1, cp850 mojibake in pwsh). The template invokes Python directly (`& python session_state.py <event>`), which inherits the raw UTF-8 bytes in both shells; `tests/test_session_state.py` drives the template's own command to keep it that way.
 
 ## Verifying the hooks live
 

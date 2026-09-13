@@ -1,6 +1,6 @@
 ---
 name: prompt-audit
-description: Audits instruction files (CLAUDE.md, AGENTS.md, copilot-instructions.md, global-instructions.md, SKILL.md) in this repo and at most two sibling repos per run against the vendors' current prompting guides, then posts one ledger digest. Manual invoke only. E.g. "/prompt-audit", "/prompt-audit --dry-run", "audit our prompts against the latest guidance".
+description: Audits instruction files (CLAUDE.md, AGENTS.md, copilot-instructions.md, global-instructions.md, SKILL.md) across this repo and its sibling repos, at most two repos per run, against the vendors' current prompting guides, then posts one ledger digest. Manual invoke only. E.g. "/prompt-audit", "/prompt-audit --dry-run", "audit our prompts against the latest guidance".
 ---
 
 # prompt-audit (lite, host-agnostic)

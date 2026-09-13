@@ -285,7 +285,10 @@ class ContractTests(unittest.TestCase):
 
     def test_rule_set_and_sources_are_present_and_parse(self):
         self.assertEqual(len(RULES), 29)
-        self.assertEqual(pa.rules_rubric(pa.RULES_MD.read_bytes().replace(b"\n", b"\r\n")), pa.rules_rubric())
+        # Build both variants from LF-normalised bytes: an autocrlf=true checkout already has CRLF on disk.
+        lf = pa.RULES_MD.read_bytes().replace(b"\r\n", b"\n")
+        self.assertEqual(pa.rules_rubric(lf.replace(b"\n", b"\r\n")), pa.rules_rubric(lf))
+        self.assertEqual(pa.rules_rubric(), pa.rules_rubric(lf))
         self.assertTrue(pa.load_toml()["sources"])
 
     def test_skill_and_helper_name_no_vendor_or_model(self):

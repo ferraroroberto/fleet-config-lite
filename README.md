@@ -1,6 +1,6 @@
 # fleet-config-lite
 
-Minimal companion repo for [app-launcher-lite](https://github.com/ferraroroberto/app-launcher-lite): the GitHub-Copilot-CLI-side machinery that makes the lite Board's session columns and the issue workflow work. No LLM calls, no schedulers, no chief — just hooks, skills, and an installer. (`skills/learning-log/` is a deliberate, narrow exception to "no LLM calls" — see its own section below — and, like every skill here, is manual-invoke only.)
+Minimal companion repo for [app-launcher-lite](https://github.com/ferraroroberto/app-launcher-lite): the GitHub-Copilot-CLI-side machinery that makes the lite Board's session columns and the issue workflow work. No LLM calls, no schedulers, no chief — just hooks, skills, and an installer. (`skills/learning-log/` and `skills/prompt-audit/` are deliberate, narrow exceptions to "no LLM calls" — see their own sections below — and, like every skill here, are manual-invoke only.)
 
 Downscaled from the private `fleet-config`; when a capability is missing here, port it from there deliberately rather than re-inventing it.
 
@@ -16,6 +16,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `skills/quick/` | Trunk-commit lane below the issue threshold: one capped, verified commit straight to the default branch (no issue, no MR), auto-escalating to the issue workflow when the change outgrows its caps — the sanctioned exception to "never commit directly to the default branch" declared in `global-instructions.md` |
 | `skills/learning-log/` | Host-agnostic (GitHub or GitLab) learning log + productivity stats from this repo's sibling-repo work stream: `SKILL.md` + self-contained `gather.py` — see "The /learning-log skill" below |
 | `skills/codebase-audit/`, `skills/audit-fleet/`, `skills/cleanup-fleet/` | Gated, credit-bounded resting-state quality audit: `SKILL.md` + self-contained `audit_gate.py` (significance gate, ledger, managed-issue upsert; `gh` or `glab`), a sequential fleet loop, and a one-repo-per-run fix loop — see "The audit skills" below |
+| `skills/prompt-audit/` | Capped audit of instruction files (this repo plus at most 2 sibling repos per run) against the vendors' current prompting guides: `SKILL.md` + byte-identical `rules.md`/`sources.toml` + self-contained `audit.py` (freshness gate, lint, skip-unchanged ledger, digest; `gh` or `glab`) — see "The /prompt-audit skill" below |
 | `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported byte-for-byte in its `assets/`+`scripts/` from the private life-os repo |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
@@ -66,6 +67,31 @@ python skills\codebase-audit\audit_gate.py get --kind slop   # the managed issue
 ```
 
 Host is detected from `origin` like `learning-log`: the GitHub path is exercised live against this repo, the GitLab path follows `glab`'s documented CLI shape but isn't live-tested here.
+
+## The /prompt-audit skill
+
+`skills/prompt-audit/` is a downscaled port of the private `fleet-config`'s `.claude/skills/prompt-audit` (fleet-config#831, lite scope in #834). On manual invocation it checks whether the vendors' prompting guides moved past the vendored baselines (the session fetches each page verbatim; `audit.py diff-source` hashes it — an unfetched page is `not-checked`, never `unchanged`), lints the instruction files of this repo and its sibling repos (`global-instructions.md`, `CLAUDE.md`, `AGENTS.md`, `.github/copilot-instructions.md`, `.claude/rules/*.md`, `SKILL.md`), judges the lint candidates and judgment-only rules against `rules.md`, and posts one digest comment on a `prompt-audit ledger` issue (label `audit-meta`) in this repo. The ledger's marker, title and hidden block are the private tool's exact format, so either tool reads the other's ledger unchanged; a file whose sha is unchanged under the same rule-set hash is skipped on the next run.
+
+Caps are hard-coded in `audit.py` and unit-tested: **at most 2 repos per run** (the rest are listed as deferred and rotate in on later runs), **at most 5 findings per file per run**, no sub-agents (the judgment pass runs serially in the invoking session), no scheduler, no notifications. Unlike the private tool it files no per-repo `prompt-drift` issues — this repo's `/cleanup-fleet` has no such bucket to consume them — and a moved guide stops the scan without filing anything here, because the rule-set is canonical upstream.
+
+It is a deliberate, narrow exception to this repo's "no LLM calls" principle, the same carve-out as `learning-log`: the judgment step is model-agnostic (it never hardcodes a vendor or model name and runs in whichever session invoked it) while every count, hash and verdict cap comes from `audit.py`, and there is still no unattended entry point, only `/prompt-audit`.
+
+**Port provenance.** `rules.md` and `sources.toml` are byte-identical copies, re-vendored by replacing the files whole, never by editing them here:
+
+| File | Source | Commit | sha256 |
+|---|---|---|---|
+| `skills/prompt-audit/rules.md` | `fleet-config` `.claude/skills/prompt-audit/rules.md` | `ec8436d` | `19c3703c83113fd7d73d5a4756347e097e1cf7486aa8ba5ef20674b7ef852584` |
+| `skills/prompt-audit/sources.toml` | `fleet-config` `.claude/skills/prompt-audit/sources.toml` | `ec8436d` | `257c77544604c3cce63f5b8c1b80fb76dc014f27414039dc605bb627eadf285b` |
+
+The hashes are of the committed (LF) bytes; a checkout with `core.autocrlf=true` shows CRLF on disk, which `audit.py` normalises before hashing the rubric. `audit.py` itself is a self-contained near-duplicate of the private helper, not a copy.
+
+```powershell
+python skills\prompt-audit\audit.py host                  # HOST=github|CLI=gh|REPO=...
+python skills\prompt-audit\audit.py plan                  # REPOS= (at most 2), PLAN=/HIT= lines, DEFERRED= repos
+python skills\prompt-audit\audit.py ledger-write --run run.json --dry-run   # ARGV= lines, nothing spawned
+```
+
+Host is detected from `origin` like the other skills: the GitHub path is exercised live against this repo; the GitLab path is unit-tested with a stubbed runner (a GitLab origin drives `glab issue list/create/update/note`) but isn't live-tested here, since `glab` isn't installed on this dev machine.
 
 ## How the session hooks work
 

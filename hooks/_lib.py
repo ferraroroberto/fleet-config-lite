@@ -66,16 +66,18 @@ def normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 def read_stdin_json() -> Dict[str, Any]:
     """Read the hook payload from stdin; {} on empty/unparseable input.
 
-    UTF-8 is handled here rather than with shell-level ``$env:PYTHONUTF8``/
-    ``$OutputEncoding`` statements, keeping the hook command a bare pipe
-    (``[Console]::In.ReadToEnd() | python ...``) — the payload has crossed a
-    PowerShell→native boundary whose encoding we don't control.
+    The hook command invokes Python directly with no pipe
+    (``& python session_state.py <event>``): a native command started without
+    pipeline input inherits PowerShell's raw stdin, so Copilot's UTF-8 bytes
+    arrive untouched in Windows PowerShell 5.1 and pwsh 7 alike. The old
+    ``[Console]::In.ReadToEnd() | python`` pipe decoded them with the console
+    OEM code page first, garbling any non-ASCII text (fleet-config-lite#24).
+    The bytes are decoded as UTF-8 here, independent of the locale default.
     """
     try:
-        sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+        raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")
     except (AttributeError, OSError, ValueError):
-        pass
-    raw = sys.stdin.read()
+        return {}
     if not raw or not raw.strip():
         return {}
     try:

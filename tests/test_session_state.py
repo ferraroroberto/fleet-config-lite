@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -138,6 +140,64 @@ class SessionStateTests(unittest.TestCase):
         session_state.state_file().write_text("{not json", encoding="utf-8")
         session_state.upsert_from_payload(_payload(prompt="go"), "userPromptSubmitted")
         self.assertEqual(self._rows()["abc-123"]["status"], "working")
+
+
+class HookCommandUtf8Tests(unittest.TestCase):
+    """The rendered hook command delivers non-ASCII stdin intact (fleet-config-lite#24).
+
+    Drives the template's own ``powershell`` command end to end, under every
+    PowerShell Copilot's ``powershell`` key may run in (pwsh 7.6.6 on CLI
+    1.0.83, per fleet-config#913; 5.1 covered too). The old
+    ``[Console]::In.ReadToEnd() | python`` pipe turned an em dash into ``???``
+    (5.1) or cp850 mojibake (pwsh) before ``session_state.py`` saw it.
+    """
+
+    REPO = Path(__file__).resolve().parents[1]
+
+    @staticmethod
+    def _shells():
+        shells = []
+        system_root = os.environ.get("SystemRoot")
+        if system_root:
+            ps51 = Path(system_root) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
+            if ps51.exists():
+                shells.append(("powershell 5.1", str(ps51)))
+        pwsh = shutil.which("pwsh")
+        if pwsh:
+            shells.append(("pwsh", pwsh))
+        return shells
+
+    def test_non_ascii_payload_reaches_hook_intact(self):
+        shells = self._shells()
+        if not shells:
+            self.skipTest("no PowerShell on this host")
+        template = json.loads(
+            (self.REPO / "hook-config" / "session-state.template.json").read_text(encoding="utf-8")
+        )
+        command = (
+            template["hooks"]["userPromptSubmitted"][0]["powershell"]
+            .replace("{{PYTHON}}", Path(sys.executable).as_posix())
+            .replace("{{REPO}}", self.REPO.as_posix())
+        )
+        cwd = "C:\\work\\café—中"
+        # Raw UTF-8 codepoints, as Copilot sends them: a default json.dumps
+        # would \u-escape them and the check would pass on any transport.
+        stdin = json.dumps(
+            {"sessionId": "utf8-24", "timestamp": 1, "cwd": cwd, "prompt": "a — b"},
+            ensure_ascii=False,
+        ).encode("utf-8")
+        for name, shell in shells:
+            with self.subTest(shell=name), tempfile.TemporaryDirectory() as state_dir:
+                env = dict(os.environ, COPILOT_HOOKS_STATE_DIR=state_dir)
+                res = subprocess.run(
+                    [shell, "-NoProfile", "-NonInteractive", "-Command", command],
+                    input=stdin, capture_output=True, timeout=60, env=env,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+                )
+                self.assertEqual(res.returncode, 0, res.stderr.decode("utf-8", "replace"))
+                rows = json.loads((Path(state_dir) / "sessions-state.json").read_text(encoding="utf-8"))
+                self.assertEqual(rows["utf8-24"]["cwd"], cwd)
+                self.assertEqual(rows["utf8-24"]["project"], "café—中")
 
 
 if __name__ == "__main__":

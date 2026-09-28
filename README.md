@@ -33,7 +33,7 @@ Then restart any running Copilot CLI session (hook configs load at startup).
 
 Requirements: Windows, Python 3.11+ on a real install path (the WindowsApps alias is rejected), GitHub Copilot CLI ≥ 1.0.70, `glab` authenticated against your GitLab host for the skills.
 
-`install.ps1` also links `global-instructions.md` into `~/.copilot/copilot-instructions.md` (symlink, falling back to a plain copy if symlinks aren't available). If that path already belongs to something else — most commonly the private `fleet-config` linking its own, larger `global-CLAUDE.md` there — the installer detects it isn't ours and prints `[skip]` rather than overwriting it.
+`install.ps1` also links `global-instructions.md` into `~/.copilot/copilot-instructions.md` (symlink, falling back to a plain copy if symlinks aren't available; the copy starts with a `<!-- fleet-config-lite: managed copy ... -->` marker line). It only replaces a file it can positively identify as its own: a symlink pointing at this checkout, a plain file starting with that marker, or a plain file byte-identical to `global-instructions.md`. Anything else — your own hand-written instructions file, or the private `fleet-config`'s larger `global-CLAUDE.md` linked there — is left untouched and the installer prints `[skip]`; move or delete it and re-run if you want the installer to manage the path.
 
 ## The global instructions file
 

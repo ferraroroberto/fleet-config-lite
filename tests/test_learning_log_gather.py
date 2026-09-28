@@ -142,6 +142,15 @@ class LedgerBodyTests(unittest.TestCase):
         self.assertIn("2026-08-05: new lesson", body)
         self.assertIn("2026-07-29: old lesson", body)
 
+    def test_archive_is_capped_under_body_limit_dropping_oldest(self):
+        old = "\n".join(f"- 2026-01-01: old lesson {i} " + "x" * 200 for i in range(1000))
+        prior = f"{gl.STATE_MARKER}\nlast-run-at: 2026-07-29\n\n{gl.ARCHIVE_HEADER}\n{old}\n"
+        body = gl.build_ledger_body(prior, "2026-08-05", "", "- brand new lesson")
+        self.assertLessEqual(len(body), gl.LEDGER_BODY_MAX_CHARS)
+        self.assertIn("2026-08-05: brand new lesson", body)
+        self.assertIn("old lesson 0 ", body)
+        self.assertNotIn("old lesson 999 ", body)
+
     def test_parse_last_run_roundtrip(self):
         body = gl.build_ledger_body("", "2026-08-05", "", "")
         self.assertEqual(gl.parse_last_run(body), "2026-08-05")
@@ -180,6 +189,34 @@ class LedgerCliTests(unittest.TestCase):
         self.assertEqual(url, "https://github.com/o/r/issues/7")
         self.assertTrue(any(c[:3] == ["gh", "issue", "edit"] for c in calls))
         self.assertFalse(any(c[:3] == ["gh", "issue", "create"] for c in calls))
+
+    def test_upsert_ledger_edit_failure_returns_none_and_reports_stderr(self):
+        for host, cli in (("github", "gh"), ("gitlab", "glab")):
+            def fake_run(cmd, timeout=120):
+                class R:
+                    returncode = 1
+                    stdout = ""
+                    stderr = "HTTP 422: body is too long"
+                return R()
+
+            with patch.object(gl, "ensure_ledger_label"),\
+                 patch.object(gl, "read_ledger", return_value=(7, "old", None)),\
+                 patch.object(gl, "_run", side_effect=fake_run),\
+                 patch.object(gl, "_cli_json") as cli_json,\
+                 patch("sys.stderr") as err:
+                number, url = gl.upsert_ledger(host, "o/r", "new body")
+            self.assertEqual((number, url), (None, None), cli)
+            cli_json.assert_not_called()
+            self.assertIn("body is too long", "".join(c.args[0] for c in err.write.call_args_list))
+
+    def test_cmd_upsert_ledger_exits_nonzero_on_edit_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            body_file = Path(tmp) / "b.md"
+            body_file.write_text("x", encoding="utf-8")
+            args = type("A", (), {"body_file": str(body_file)})()
+            with patch.object(gl, "resolve_repo_context", return_value=("github", "o", "r", "o/r")),\
+                 patch.object(gl, "upsert_ledger", return_value=(None, None)):
+                self.assertEqual(gl.cmd_upsert_ledger(args), 1)
 
     def test_upsert_ledger_creates_when_no_issue_exists(self):
         def fake_run(cmd, timeout=120):

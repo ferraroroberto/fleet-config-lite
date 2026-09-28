@@ -77,6 +77,9 @@ LEDGER_LABEL = "learning-log"
 STATE_MARKER = "<!-- learning-log-state -->"
 ARCHIVE_HEADER = "## Decision / discovery archive"
 HORIZON_HEADER = "## Horizon -> next week"
+# GitHub rejects issue bodies over 65,536 chars and GitLab over ~1,000,000; stay
+# well under the smaller so the archive can never grow into a failing edit.
+LEDGER_BODY_MAX_CHARS = 60000
 
 # Canonical work-type buckets, in display order. PR/MR titles are conventional-
 # commit prefixed; issues carry type labels. Both map onto the same set so a
@@ -181,7 +184,15 @@ def extract_archive_bullets(prior_body: str) -> list[str]:
 def build_ledger_body(prior_body: str, today: str, horizon: str, discoveries: str) -> str:
     horizon_md = "\n".join(_bullet_lines(horizon)) or "- [ ] (none captured this run)"
     archive = dated_discovery_bullets(discoveries, today) + extract_archive_bullets(prior_body)
-    archive_md = "\n".join(archive) if archive else "- (nothing archived yet)"
+    while True:
+        archive_md = "\n".join(archive) if archive else "- (nothing archived yet)"
+        body = _ledger_body(today, horizon_md, archive_md)
+        if len(body) <= LEDGER_BODY_MAX_CHARS or not archive:
+            return body
+        archive.pop()  # newest bullets come first, so this drops the oldest
+
+
+def _ledger_body(today: str, horizon_md: str, archive_md: str) -> str:
     return (
         f"{STATE_MARKER}\n"
         f"last-run-at: {today}\n\n"
@@ -425,11 +436,20 @@ def upsert_ledger(host: str, repo_full: str, body: str) -> tuple[int | None, str
     try:
         if number:
             if host == "github":
-                _run(["gh", "issue", "edit", str(number), "--repo", repo_full, "--body-file", body_file])
+                edit = _run(["gh", "issue", "edit", str(number), "--repo", repo_full, "--body-file", body_file])
+                if edit.returncode != 0:
+                    print(f"gh issue edit {number} failed (exit {edit.returncode}): {edit.stderr.strip()[:400]}",
+                          file=sys.stderr)
+                    return None, None
                 proc = _cli_json("gh", ["issue", "view", str(number), "--repo", repo_full, "--json", "url"])
                 url = proc.get("url") if isinstance(proc, dict) else None
             else:
-                _run(["glab", "issue", "update", str(number), "--repo", repo_full, "--description-file", body_file])
+                edit = _run(["glab", "issue", "update", str(number), "--repo", repo_full,
+                             "--description-file", body_file])
+                if edit.returncode != 0:
+                    print(f"glab issue update {number} failed (exit {edit.returncode}): {edit.stderr.strip()[:400]}",
+                          file=sys.stderr)
+                    return None, None
                 proc = _cli_json("glab", ["issue", "view", str(number), "--repo", repo_full, "--output", "json"])
                 url = proc.get("web_url") if isinstance(proc, dict) else None
             return number, url
@@ -540,7 +560,7 @@ def cmd_upsert_ledger(args) -> int:
     body = Path(args.body_file).read_text(encoding="utf-8")
     number, url = upsert_ledger(host, repo_full, body)
     if not number:
-        print("Ledger upsert failed -- no issue number returned.", file=sys.stderr)
+        print("Ledger upsert failed -- the ledger body was not written; do not post the digest.", file=sys.stderr)
         return 1
     print(f"LEDGER_NUMBER={number}")
     print(f"LEDGER_URL={url or ''}")

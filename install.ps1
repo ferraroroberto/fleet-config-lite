@@ -60,16 +60,21 @@ Write-Host "[ok] hook config -> $target"
 Write-Host "     python      -> $python"
 
 # --- global instructions
-# Never overwrite a SYMLINKED instructions file this repo does not own: on a
-# machine where the private fleet-config already links its own
-# global-CLAUDE.md into ~/.copilot/copilot-instructions.md, that link wins
-# and this step no-ops. A plain (non-symlink) file at the target is always
-# treated as ours and refreshed -- this is what a non-elevated machine gets
-# on every run (file symlinks need admin or Developer Mode; junctions, used
-# for skills/ below, don't), so "ours" can't be judged by link type alone
-# there. This replaces the old manual "copy or merge by hand" seed workflow.
+# Never overwrite an instructions file this repo does not own. Ownership needs
+# a positive signal:
+#   - a SYMLINK is ours only if it points at this checkout's source (the
+#     private fleet-config links its own global-CLAUDE.md there; that wins and
+#     this step no-ops);
+#   - a plain file is ours only if its first line is the marker the copy
+#     fallback below writes, or its content is byte-identical to the source
+#     (a copy from before the marker existed). A user's own hand-written
+#     copilot-instructions.md has neither, so it is left alone with a [skip].
+# Copies are refreshed on every run, so a machine that cannot create file
+# symlinks (they need admin or Developer Mode; the junctions used for skills/
+# below don't) still tracks global-instructions.md.
 $instructionsSource = Join-Path $repo 'global-instructions.md'
 $instructionsTarget = Join-Path $copilotHome 'copilot-instructions.md'
+$instructionsMarker = '<!-- fleet-config-lite: managed copy of global-instructions.md; install.ps1 overwrites this file -->'
 $skipInstructions = $false
 if (Test-Path $instructionsTarget) {
     $item = Get-Item $instructionsTarget -Force
@@ -82,7 +87,16 @@ if (Test-Path $instructionsTarget) {
         }
         $skipInstructions = $true
     } else {
-        Remove-Item $instructionsTarget -Force
+        $existing = [System.IO.File]::ReadAllText($instructionsTarget)
+        $sourceText = [System.IO.File]::ReadAllText($instructionsSource)
+        $firstLine = ($existing -split "`r?`n", 2)[0]
+        if (($firstLine -eq $instructionsMarker) -or ($existing -ceq $sourceText)) {
+            Remove-Item $instructionsTarget -Force
+        } else {
+            Write-Host "[skip] copilot-instructions.md exists and is not ours (no marker, differs from global-instructions.md) -> $instructionsTarget"
+            Write-Host "       move or delete it and re-run to let the installer manage it"
+            $skipInstructions = $true
+        }
     }
 }
 if (-not $skipInstructions) {
@@ -90,7 +104,10 @@ if (-not $skipInstructions) {
         New-Item -ItemType SymbolicLink -Path $instructionsTarget -Target $instructionsSource | Out-Null
         Write-Host "[ok] instructions symlink -> $instructionsTarget"
     } catch {
-        Copy-Item $instructionsSource $instructionsTarget
+        # Marker first line = the ownership signal the next run looks for.
+        # BOM-less UTF-8, same reasoning as the hook config above.
+        $body = [System.IO.File]::ReadAllText($instructionsSource)
+        [System.IO.File]::WriteAllText($instructionsTarget, $instructionsMarker + "`r`n`r`n" + $body)
         Write-Host "[ok] instructions copied  -> $instructionsTarget (symlink unavailable)"
     }
 }

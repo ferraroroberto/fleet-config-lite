@@ -20,6 +20,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported byte-for-byte in its `assets/`+`scripts/` from the private life-os repo |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
 | `scripts/static_ratchet.py`, `.static-ratchet-baseline.json` | Vendored static-analysis ratchet (duplicate blocks + unused imports/variables) and its committed baseline; test-time only, never a runtime dependency — see "Tests" below |
+| `scripts/structure_ratchet.py`, `.structure-ratchet-baseline.json`, `docs/layout.md` | Vendored structure ratchet (file size, function length, directory width, root layout) and its committed baseline; `docs/layout.md` says where new code goes — see "The structure ratchet" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -126,6 +127,10 @@ Prerequisites, both on the machine that runs the tests:
 - **Node (`npx`)** for `jscpd`; its first run downloads the pinned release, so it needs network once.
 
 A machine without them is **NOT CONFIRMED**, with the reason printed, and the test run **fails** — a detector that could not run has checked nothing, so it is never folded into a pass or a skip. `scripts/static_ratchet_gate.py` is the one place that maps the script's exit codes (0 pass; 1 new finding; 2 bad config; 3 detector could not run), and the ratchet is not a dependency of any hook or skill.
+
+### The structure ratchet
+
+`tests/test_structure_ratchet.py` runs the vendored `scripts/structure_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[structure_ratchet]`, shape `skills-governance`). It fails when a file passes 1,000 lines, a function 100 lines or a directory 40 modules and is new or above its entry in `.structure-ratchet-baseline.json`, or when the root folders do not match `shape` plus `extra_roots`. The one baselined offender (`skills/prompt-audit/audit.py`) is recorded at its real size and cannot grow; a new module goes beside it. Exit 3 (could not measure) fails as NOT CONFIRMED. Where new code goes: [docs/layout.md](docs/layout.md). Stdlib only: no new dependency.
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 

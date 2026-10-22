@@ -19,6 +19,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `skills/prompt-audit/` | Capped audit of instruction files (at most 2 repos per run, this repo and its siblings) against the vendors' current prompting guides: `SKILL.md` + byte-identical `rules.md`/`sources.toml` + self-contained `audit.py` (freshness gate, lint, skip-unchanged ledger, digest; `gh` or `glab`) — see "The /prompt-audit skill" below |
 | `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported byte-for-byte in its `assets/`+`scripts/` from the private life-os repo |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
+| `scripts/static_ratchet.py`, `.static-ratchet-baseline.json` | Vendored static-analysis ratchet (duplicate blocks + unused imports/variables) and its committed baseline; test-time only, never a runtime dependency — see "Tests" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -109,10 +110,22 @@ All hooks are advisory-only: every failure is swallowed and the hook exits 0 —
 ## Tests
 
 ```powershell
+python -m pip install -r requirements-dev.txt   # ruff, for the static ratchet below
 python -m unittest discover -s tests -v
 ```
 
-Stdlib only — no venv, no dependencies.
+The hooks and skills are stdlib only; the test run's one dev dependency is ruff (`requirements-dev.txt`, pinned), and nothing in it ships to the machines `install.ps1` wires up.
+
+### The static-analysis ratchet
+
+`tests/test_static_ratchet.py` runs the vendored `scripts/static_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[static_ratchet]`). It compares the repo's duplicated blocks (`jscpd`) and unused imports/variables (`ruff` F401/F841) with the committed `.static-ratchet-baseline.json` and fails on any finding that is **new**, naming it by key; existing debt is baselined, never blocks, and cannot grow. Shrink the baseline in the PR that removes the debt (`python scripts/static_ratchet.py --update-baseline`); adding an entry needs the explicit `--allow-additions` flag and shows in review.
+
+Prerequisites, both on the machine that runs the tests:
+
+- **ruff** from `requirements-dev.txt`, importable by the interpreter that runs the tests (`python -m ruff`).
+- **Node (`npx`)** for `jscpd`; its first run downloads the pinned release, so it needs network once.
+
+A machine without them is **NOT CONFIRMED**, with the reason printed, and the test run **fails** — a detector that could not run has checked nothing, so it is never folded into a pass or a skip. `scripts/static_ratchet_gate.py` is the one place that maps the script's exit codes (0 pass; 1 new finding; 2 bad config; 3 detector could not run), and the ratchet is not a dependency of any hook or skill.
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 

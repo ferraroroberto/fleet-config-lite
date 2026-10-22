@@ -1,0 +1,23 @@
+# .fleet.toml — this repo's architecture-map card.
+# Lite fork: the GitHub Copilot CLI hooks, skills and installer behind app-launcher-lite's Board.
+# Keep current: update in the same PR as any material change
+# (layer, port, role, one-line description, exposed services).
+layer        = "enabling"
+icon         = "🧰"
+display_name = "Fleet Config Lite"
+description  = "Lite fork of fleet-config: Copilot CLI session hooks, issue-workflow skills and installer."
+
+[vendored]
+static_ratchet = { src = "scripts/static_ratchet.py", sha = "2f1e2f7c81b9a91a062271881fc87830104808ae", dest = "scripts/static_ratchet.py" }
+
+# [static_ratchet] -- the scaffold's baseline-and-ratchet static analysis. The unit
+# run (python -m unittest discover -s tests) includes tests/test_static_ratchet.py,
+# which runs scripts/static_ratchet_gate.py, which wraps scripts/static_ratchet.py:
+# it fails on a duplicate block (jscpd via npx, Python and JS) or an unused
+# import/variable (ruff F401,F841) that is not in .static-ratchet-baseline.json.
+# Needs Node and ruff on the interpreter that runs the tests; a detector that cannot
+# run exits 3, which fails the run as NOT CONFIRMED. Procedure + limits:
+# project-scaffolding docs/static-ratchet.md.
+[static_ratchet]
+enabled  = true
+baseline = ".static-ratchet-baseline.json"

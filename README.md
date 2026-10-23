@@ -126,6 +126,8 @@ Prerequisites, both on the machine that runs the tests:
 - **ruff** from `requirements-dev.txt`, importable by the interpreter that runs the tests (`python -m ruff`).
 - **Node (`npx`)** for `jscpd`; its first run downloads the pinned release, so it needs network once.
 
+The one baselined duplicate (`parse_owner_repo` and `detect_host` in `skills/codebase-audit/audit_gate.py` and `skills/prompt-audit/audit.py`) is accepted on purpose: each skill folder is junctioned into `~/.copilot/skills/` on its own and must work with no import across skills, so deduplicating would couple them. Leave the entry in the baseline; it cannot grow.
+
 A machine without them is **NOT CONFIRMED**, with the reason printed, and the test run **fails** — a detector that could not run has checked nothing, so it is never folded into a pass or a skip. `scripts/static_ratchet_gate.py` is the one place that maps the script's exit codes (0 pass; 1 new finding; 2 bad config; 3 detector could not run), and the ratchet is not a dependency of any hook or skill.
 
 ### The structure ratchet

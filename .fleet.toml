@@ -11,7 +11,7 @@ extra_roots  = ["hook-config"]
 
 [vendored]
 static_ratchet = { src = "scripts/static_ratchet.py", sha = "f0e6f5449ecf64c9b188ed394c2a9fd8ff678406", dest = "scripts/static_ratchet.py" }
-structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "1bad417c51aa9097a2c40b530b413bfdb3b1bb90", dest = "scripts/structure_ratchet.py" }
+structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "84d2b12ab416551762e4a615e4a706df91cea69f", dest = "scripts/structure_ratchet.py" }
 
 # [static_ratchet] -- the scaffold's baseline-and-ratchet static analysis. The unit
 # run (python -m unittest discover -s tests) includes tests/test_static_ratchet.py,

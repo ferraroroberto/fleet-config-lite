@@ -36,9 +36,9 @@ def run_ratchet(script: Path = SCRIPT) -> tuple[int, str]:
             timeout=RUN_TIMEOUT_S, check=False,
         )
     except subprocess.TimeoutExpired:
-        return 3, f"structure_ratchet.py did not finish in {RUN_TIMEOUT_S}s"
+        return 3, f"{script.name} did not finish in {RUN_TIMEOUT_S}s"
     except OSError as exc:
-        return 3, f"structure_ratchet.py could not start: {exc}"
+        return 3, f"{script.name} could not start: {exc}"
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 

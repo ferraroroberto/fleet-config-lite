@@ -12,6 +12,7 @@ extra_roots  = ["hook-config"]
 [vendored]
 static_ratchet = { src = "scripts/static_ratchet.py", sha = "f0e6f5449ecf64c9b188ed394c2a9fd8ff678406", dest = "scripts/static_ratchet.py" }
 structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "84d2b12ab416551762e4a615e4a706df91cea69f", dest = "scripts/structure_ratchet.py" }
+instruction_ratchet = { src = "scripts/instruction_ratchet.py", sha = "60fdd0350f18d28838428b2e773f7868f6381fbf", dest = "scripts/instruction_ratchet.py" }
 
 # [static_ratchet] -- the scaffold's baseline-and-ratchet static analysis. The unit
 # run (python -m unittest discover -s tests) includes tests/test_static_ratchet.py,
@@ -37,3 +38,17 @@ baseline = ".static-ratchet-baseline.json"
 [structure_ratchet]
 enabled  = true
 baseline = ".structure-ratchet-baseline.json"
+
+# [instruction_ratchet] -- the scaffold's baseline-and-ratchet lint over instruction
+# files. The unit run (python -m unittest discover -s tests) includes
+# tests/test_instruction_ratchet.py, which runs scripts/instruction_ratchet.py: it fails
+# when a SKILL.md (or a doc one links) gains a hit on a deterministic prompt-audit rule,
+# or passes a size cap, beyond .instruction-ratchet-baseline.json. This repo keeps its
+# skills under skills/ and has no CLAUDE.md or AGENTS.md. Existing hits are baselined at
+# today's count, never excluded. Exit 3 (git unusable, an unreadable file, an unclosed
+# fence, an unreadable skill description) fails the run as NOT CONFIRMED. Procedure:
+# project-scaffolding docs/instruction-ratchet.md.
+[instruction_ratchet]
+enabled    = true
+baseline   = ".instruction-ratchet-baseline.json"
+skill_dirs = ["skills"]

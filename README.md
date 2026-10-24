@@ -21,6 +21,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
 | `scripts/static_ratchet.py`, `.static-ratchet-baseline.json` | Vendored static-analysis ratchet (duplicate blocks + unused imports/variables) and its committed baseline; test-time only, never a runtime dependency — see "Tests" below |
 | `scripts/structure_ratchet.py`, `.structure-ratchet-baseline.json`, `docs/layout.md` | Vendored structure ratchet (file size, function length, directory width, root layout) and its committed baseline; `docs/layout.md` says where new code goes — see "The structure ratchet" below |
+| `scripts/instruction_ratchet.py`, `.instruction-ratchet-baseline.json` | Vendored instruction ratchet (deterministic prompt-audit rules over the `SKILL.md` files and the docs they link) and its committed baseline; test-time only — see "The instruction ratchet" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -133,6 +134,10 @@ A machine without them is **NOT CONFIRMED**, with the reason printed, and the te
 ### The structure ratchet
 
 `tests/test_structure_ratchet.py` runs the vendored `scripts/structure_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[structure_ratchet]`, shape `skills-governance`). It fails when a file passes 1,000 lines, a function 100 lines or a directory 40 modules and is new or above its entry in `.structure-ratchet-baseline.json`, or when the root folders do not match `shape` plus `extra_roots`. The one baselined offender (`skills/prompt-audit/audit.py`) is recorded at its real size and cannot grow; a new module goes beside it. Exit 3 (could not measure) fails as NOT CONFIRMED. Where new code goes: [docs/layout.md](docs/layout.md). Stdlib only: no new dependency.
+
+### The instruction ratchet
+
+`tests/test_instruction_ratchet.py` runs the vendored `scripts/instruction_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[instruction_ratchet]` with `skill_dirs = ["skills"]`; this repo has no `CLAUDE.md` or `AGENTS.md`). It runs the weekly prompt audit's deterministic rules over every `skills/*/SKILL.md` and the docs a skill links, and fails when a file gains a hit on a rule that counts for its readers, or passes a size cap, beyond its entry in `.instruction-ratchet-baseline.json`; the failure names the file, the rule and the line. The one existing hit is recorded at today's count and cannot grow. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 

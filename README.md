@@ -22,6 +22,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `scripts/static_ratchet.py`, `.static-ratchet-baseline.json` | Vendored static-analysis ratchet (duplicate blocks + unused imports/variables) and its committed baseline; test-time only, never a runtime dependency — see "Tests" below |
 | `scripts/structure_ratchet.py`, `.structure-ratchet-baseline.json`, `docs/layout.md` | Vendored structure ratchet (file size, function length, directory width, root layout) and its committed baseline; `docs/layout.md` says where new code goes — see "The structure ratchet" below |
 | `scripts/instruction_ratchet.py`, `.instruction-ratchet-baseline.json` | Vendored instruction ratchet (deterministic prompt-audit rules over the `SKILL.md` files and the docs they link) and its committed baseline; test-time only — see "The instruction ratchet" below |
+| `scripts/doc_refs_ratchet.py`, `.doc-refs-ratchet-baseline.json` | Vendored doc-references ratchet (repo paths, `python -m` modules and relative links named in `README.md` and `docs/`) and its committed baseline; test-time only — see "The doc-refs ratchet" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -138,6 +139,10 @@ A machine without them is **NOT CONFIRMED**, with the reason printed, and the te
 ### The instruction ratchet
 
 `tests/test_instruction_ratchet.py` runs the vendored `scripts/instruction_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[instruction_ratchet]` with `skill_dirs = ["skills"]`; this repo has no `CLAUDE.md` or `AGENTS.md`). It runs the weekly prompt audit's deterministic rules over every `skills/*/SKILL.md` and the docs a skill links, and fails when a file gains a hit on a rule that counts for its readers, or passes a size cap, beyond its entry in `.instruction-ratchet-baseline.json`; the failure names the file, the rule and the line. The one existing hit is recorded at today's count and cannot grow. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
+
+### The doc-refs ratchet
+
+`tests/test_doc_refs_ratchet.py` runs the vendored `scripts/doc_refs_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[doc_refs_ratchet]`). It fails when `README.md` or a `docs/**/*.md` file names a repo path, a `python -m` module or a relative link that does not exist, beyond its entry in `.doc-refs-ratchet-baseline.json`; the failure names the doc, the line and the reference. The baseline is empty today. `allow_refs` lists the one intentional pointer, the shared-helper folder `docs/layout.md` says the first shared helper creates. No `port` is declared, so ports are not checked, and there is no `CLAUDE.md`. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 

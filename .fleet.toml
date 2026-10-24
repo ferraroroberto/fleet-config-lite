@@ -13,6 +13,7 @@ extra_roots  = ["hook-config"]
 static_ratchet = { src = "scripts/static_ratchet.py", sha = "f0e6f5449ecf64c9b188ed394c2a9fd8ff678406", dest = "scripts/static_ratchet.py" }
 structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "84d2b12ab416551762e4a615e4a706df91cea69f", dest = "scripts/structure_ratchet.py" }
 instruction_ratchet = { src = "scripts/instruction_ratchet.py", sha = "60fdd0350f18d28838428b2e773f7868f6381fbf", dest = "scripts/instruction_ratchet.py" }
+doc_refs_ratchet = { src = "scripts/doc_refs_ratchet.py", sha = "23dbefa46635c952d3c871bda4e80b740e7f2859", dest = "scripts/doc_refs_ratchet.py" }
 
 # [static_ratchet] -- the scaffold's baseline-and-ratchet static analysis. The unit
 # run (python -m unittest discover -s tests) includes tests/test_static_ratchet.py,
@@ -52,3 +53,18 @@ baseline = ".structure-ratchet-baseline.json"
 enabled    = true
 baseline   = ".instruction-ratchet-baseline.json"
 skill_dirs = ["skills"]
+
+# [doc_refs_ratchet] -- the scaffold's baseline-and-ratchet lint over documentation
+# references. The unit run (python -m unittest discover -s tests) includes
+# tests/test_doc_refs_ratchet.py, which runs scripts/doc_refs_ratchet.py: it fails when
+# README.md or docs/**/*.md names a repo path, `python -m` module or relative link that
+# does not exist, beyond .doc-refs-ratchet-baseline.json. This repo declares no `port`,
+# so ports are not checked, and it has no CLAUDE.md. Existing dangling references are
+# baselined, never excluded; `allow_refs` lists the one intentional pointer, the
+# shared-helper folder docs/layout.md says the first shared helper creates. Exit 3 (git
+# unusable, a file that is not UTF-8, an unclosed fence) fails the run as NOT CONFIRMED.
+# Procedure: project-scaffolding docs/doc-refs-ratchet.md.
+[doc_refs_ratchet]
+enabled    = true
+baseline   = ".doc-refs-ratchet-baseline.json"
+allow_refs = ["skills/_lib"]

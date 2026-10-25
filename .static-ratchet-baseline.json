@@ -1,8 +1,5 @@
 {
   "version": 1,
   "tools": {"jscpd": "5.4.0", "ruff": "0.17.1"},
-  "entries": [
-    {"key": "dup:057a8ed2ed68:skills/codebase-audit/audit_gate.py|skills/prompt-audit/audit.py", "files": ["skills/codebase-audit/audit_gate.py", "skills/prompt-audit/audit.py"]},
-    {"key": "dup:9f15ead9340e:tests/test_conventions_ratchet.py|tests/test_dead_code_ratchet.py", "files": ["tests/test_conventions_ratchet.py", "tests/test_dead_code_ratchet.py"]}
-  ]
+  "entries": []
 }

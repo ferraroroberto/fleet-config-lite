@@ -111,8 +111,8 @@ capture every line:
 
 For each `BUCKET=` line, dispatch a sub-agent using **this session's own
 default model** — never hardcode a specific vendor/model name — and the
-**lowest reasoning-effort tier available** (e.g. Claude Code: omit any
-`model`/`effort` override on the `Agent` tool call so it inherits the
+**lowest reasoning-effort tier available** (e.g. omit any
+`model`/`effort` override on the sub-agent tool call so it inherits the
 session default, or pick the fastest available subagent if the harness
 exposes one; Copilot CLI / other agents: use whatever their own default
 model is). This step reads one short bucket file and extracts patterns — it

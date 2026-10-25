@@ -129,7 +129,7 @@ Prerequisites, both on the machine that runs the tests:
 - **ruff** from `requirements-dev.txt`, importable by the interpreter that runs the tests (`python -m ruff`).
 - **Node (`npx`)** for `jscpd`; its first run downloads the pinned release, so it needs network once.
 
-Two duplicates are baselined on purpose. The first is `parse_owner_repo` and `detect_host` in `skills/codebase-audit/audit_gate.py` and `skills/prompt-audit/audit.py`: each skill folder is junctioned into `~/.copilot/skills/` on its own and must work with no import across skills, so deduplicating would couple them. The second is the shared docstring and wiring of `tests/test_conventions_ratchet.py` and `tests/test_dead_code_ratchet.py`, two stages of the same vendored-script contract. Leave both entries in the baseline; they cannot grow.
+The baseline is empty. One duplicate is intentional and declared in the source instead: `parse_owner_repo` and `detect_host` in `skills/codebase-audit/audit_gate.py` sit between `# jscpd:ignore-start` and `# jscpd:ignore-end` markers (the copy in `skills/prompt-audit/audit.py` stays unmarked, so its size baseline does not grow), because each skill folder is junctioned into `~/.copilot/skills/` on its own and must work with no import across skills, so deduplicating would couple them. The ratchet tests share one assertion, `assert_ratchet_passes` in `tests/test_structure_ratchet.py`.
 
 A machine without them is **NOT CONFIRMED**, with the reason printed, and the test run **fails** — a detector that could not run has checked nothing, so it is never folded into a pass or a skip. `scripts/static_ratchet_gate.py` is the one place that maps the script's exit codes (0 pass; 1 new finding; 2 bad config; 3 detector could not run), and the ratchet is not a dependency of any hook or skill.
 
@@ -139,7 +139,7 @@ A machine without them is **NOT CONFIRMED**, with the reason printed, and the te
 
 ### The instruction ratchet
 
-`tests/test_instruction_ratchet.py` runs the vendored `scripts/instruction_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[instruction_ratchet]` with `skill_dirs = ["skills"]`; this repo has no `CLAUDE.md` or `AGENTS.md`). It runs the weekly prompt audit's deterministic rules over every `skills/*/SKILL.md` and the docs a skill links, and fails when a file gains a hit on a rule that counts for its readers, or passes a size cap, beyond its entry in `.instruction-ratchet-baseline.json`; the failure names the file, the rule and the line. The one existing hit is recorded at today's count and cannot grow. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
+`tests/test_instruction_ratchet.py` runs the vendored `scripts/instruction_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[instruction_ratchet]` with `skill_dirs = ["skills"]`; this repo has no `CLAUDE.md` or `AGENTS.md`). It runs the weekly prompt audit's deterministic rules over every `skills/*/SKILL.md` and the docs a skill links, and fails when a file gains a hit on a rule that counts for its readers, or passes a size cap, beyond its entry in `.instruction-ratchet-baseline.json`; the failure names the file, the rule and the line. The baseline is empty. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
 
 ### The doc-refs ratchet
 

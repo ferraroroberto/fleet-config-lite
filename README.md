@@ -24,6 +24,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `scripts/instruction_ratchet.py`, `.instruction-ratchet-baseline.json` | Vendored instruction ratchet (deterministic prompt-audit rules over the `SKILL.md` files and the docs they link) and its committed baseline; test-time only — see "The instruction ratchet" below |
 | `scripts/doc_refs_ratchet.py`, `.doc-refs-ratchet-baseline.json` | Vendored doc-references ratchet (repo paths, `python -m` modules and relative links named in `README.md` and `docs/`) and its committed baseline; test-time only — see "The doc-refs ratchet" below |
 | `scripts/dead_code_ratchet.py`, `.dead-code-ratchet-baseline.json` | Vendored dead-code ratchet (Python functions, classes and methods nothing references) and its committed baseline; test-time only — see "The dead-code ratchet" below |
+| `scripts/docs_ratchet.py`, `.docs-ratchet-baseline.json` | Vendored docs ratchet (root README size and the history markers in `README.md` and `docs/`) and its committed baseline; test-time only — see "The docs ratchet" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -152,6 +153,10 @@ A machine without them is **NOT CONFIRMED**, with the reason printed, and the te
 ### The conventions ratchet
 
 `tests/test_conventions_ratchet.py` runs the vendored `scripts/conventions_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[conventions_ratchet]`). It holds the fleet conventions one `ast` rule can check, counted per file and rule against `.conventions-ratchet-baseline.json`, and fails when a count rises; the failure names the file, the line and the rule. Enabled here: `no-window` (hooks and skills spawn processes on Windows), `logging-not-print` (scoped to `hooks/` and `skills/`, the library code) and `no-drive-path`. `secret-compare` and `git-wrapper` stay off because the repo has no secret-compare or git helper for them to route through. The baseline is empty today. There is no `[e2e]` router table, so the baseline file needs no `tier = "none"` rule. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
+
+### The docs ratchet
+
+`tests/test_docs_ratchet.py` runs the vendored `scripts/docs_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[docs_ratchet]`). It holds the README and docs convention in two per-file measures against `.docs-ratchet-baseline.json`: the root `README.md` stays under 40 KiB, and `README.md` and `docs/**/*.md` carry no more history markers (an issue reference, a dated heading or a changelog heading) than their entry; the failure names the file, the line and the marker. The README is under budget, so only its marker count is baselined. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 

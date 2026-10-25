@@ -16,6 +16,7 @@ instruction_ratchet = { src = "scripts/instruction_ratchet.py", sha = "60fdd0350
 doc_refs_ratchet = { src = "scripts/doc_refs_ratchet.py", sha = "23dbefa46635c952d3c871bda4e80b740e7f2859", dest = "scripts/doc_refs_ratchet.py" }
 dead_code_ratchet = { src = "scripts/dead_code_ratchet.py", sha = "8cc9a5f908c48dabc69971ff958869dffed1ba21", dest = "scripts/dead_code_ratchet.py" }
 conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "0eb0da42298e391fc614b3fe550bd6cf2d07c693", dest = "scripts/conventions_ratchet.py" }
+docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "fdb750461997c4a13eacea8091f115ff12bba564", dest = "scripts/docs_ratchet.py" }
 classify_e2e = { src = "scripts/classify_e2e.py", sha = "6e3b3e014fb0e56d2064bad495fe2763ecaffdf9", dest = "skills/e2e/classify_e2e.py" }
 
 # [static_ratchet] -- the scaffold's baseline-and-ratchet static analysis. The unit
@@ -102,3 +103,15 @@ enabled     = true
 baseline    = ".conventions-ratchet-baseline.json"
 rules       = ["no-window", "logging-not-print", "no-drive-path"]
 print_paths = ["hooks/", "skills/"]
+
+# [docs_ratchet] -- the scaffold's baseline-and-ratchet lint for the README and docs
+# convention. The unit run (python -m unittest discover -s tests) includes
+# tests/test_docs_ratchet.py, which runs scripts/docs_ratchet.py: it fails when the root
+# README.md passes `readme_max_bytes` or a README.md / docs/**/*.md file gains a history
+# marker (an issue reference, a dated heading or a changelog heading) beyond its entry in
+# .docs-ratchet-baseline.json. Existing markers are baselined, never excluded. Exit 3
+# (git unusable, a file that is not UTF-8, an unclosed fence or HTML comment) fails the
+# run as NOT CONFIRMED. Procedure: project-scaffolding docs/docs-ratchet.md.
+[docs_ratchet]
+enabled  = true
+baseline = ".docs-ratchet-baseline.json"

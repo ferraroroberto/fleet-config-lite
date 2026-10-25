@@ -32,6 +32,7 @@ def _load(name: str, path: Path):
     return module
 
 
+sys.path.insert(0, str(SKILL_DIR))  # audit.py imports its sibling audit_lint.py, as it does when run by path
 pa = _load("lite_prompt_audit", SKILL_DIR / "audit.py")
 RULES = pa.parse_rules(pa.RULES_MD.read_text(encoding="utf-8"))
 AUD = pa.load_toml()["audiences"]
@@ -292,7 +293,7 @@ class ContractTests(unittest.TestCase):
         self.assertTrue(pa.load_toml()["sources"])
 
     def test_skill_and_helper_name_no_vendor_or_model(self):
-        for name in ("SKILL.md", "audit.py"):
+        for name in ("SKILL.md", "audit.py", "audit_lint.py"):
             lines = (SKILL_DIR / name).read_text(encoding="utf-8").splitlines()
             hits = [l for l in lines if self.VENDOR_WORDS.search(self.FILE_CONVENTIONS.sub("", l))]
             self.assertEqual(hits, [], name)

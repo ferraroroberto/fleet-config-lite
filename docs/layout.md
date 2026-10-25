@@ -1,6 +1,6 @@
 # Layout
 
-Where code goes in this repo. The shape is `skills-governance` (declared in `.fleet.toml`); `scripts/structure_ratchet.py` holds the root folders to it and holds file size (1,000 lines), function length (100 lines) and directory width (40 modules) to the baseline in `.structure-ratchet-baseline.json`. The baselined offender cannot grow; a new module goes beside it, not into it.
+Where code goes in this repo. The shape is `skills-governance` (declared in `.fleet.toml`); `scripts/structure_ratchet.py` holds the root folders to it and holds file size (1,000 lines), function length (100 lines) and directory width (40 modules) to the baseline in `.structure-ratchet-baseline.json`. The baseline is empty; a file nearing a limit splits into a sibling module instead of growing.
 
 ```
 .fleet.toml                      architecture-map card, [vendored] table, ratchet config
@@ -23,7 +23,7 @@ docs/layout.md                   this file
 - `skills/e2e/` — `SKILL.md`, `e2e_route.py` and the vendored `classify_e2e.py`.
 - `skills/codebase-audit/` — `SKILL.md` and `audit_gate.py`; `audit-fleet` and `cleanup-fleet` are `SKILL.md` only.
 - `skills/learning-log/` — `SKILL.md` and `gather.py`.
-- `skills/prompt-audit/` — `SKILL.md`, `audit.py`, `rules.md` and `sources.toml`.
+- `skills/prompt-audit/` — `SKILL.md`, `audit.py` (the entry point), `audit_lint.py` (its pure text and lint layer), `rules.md` and `sources.toml`.
 - `skills/slides/` — `SKILL.md`, `assets/` and `scripts/`.
 - `scripts/` — `static_ratchet.py` and `structure_ratchet.py` (vendored byte-for-byte, never edited here) and `static_ratchet_gate.py`.
 
@@ -36,4 +36,3 @@ docs/layout.md                   this file
 ## Declared exceptions
 
 - `hook-config/` is in `extra_roots`: the installer renders it into the Copilot hook definition, so it is data for the installer and not code under `hooks/`.
-- `skills/prompt-audit/audit.py` is baselined at 1,120 lines. It does not grow; further audit logic goes in a new module beside it. Splitting it is its own issue.

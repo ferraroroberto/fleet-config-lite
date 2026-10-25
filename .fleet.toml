@@ -17,6 +17,7 @@ doc_refs_ratchet = { src = "scripts/doc_refs_ratchet.py", sha = "23dbefa46635c95
 dead_code_ratchet = { src = "scripts/dead_code_ratchet.py", sha = "8cc9a5f908c48dabc69971ff958869dffed1ba21", dest = "scripts/dead_code_ratchet.py" }
 conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "0eb0da42298e391fc614b3fe550bd6cf2d07c693", dest = "scripts/conventions_ratchet.py" }
 docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "fdb750461997c4a13eacea8091f115ff12bba564", dest = "scripts/docs_ratchet.py" }
+comment_ratchet = { src = "scripts/comment_ratchet.py", sha = "e56308e1c099712cf5a006557c94e3f9ae4fe8aa", dest = "scripts/comment_ratchet.py" }
 classify_e2e = { src = "scripts/classify_e2e.py", sha = "6e3b3e014fb0e56d2064bad495fe2763ecaffdf9", dest = "skills/e2e/classify_e2e.py" }
 
 # [static_ratchet] -- the scaffold's baseline-and-ratchet static analysis. The unit
@@ -115,3 +116,16 @@ print_paths = ["hooks/", "skills/"]
 [docs_ratchet]
 enabled  = true
 baseline = ".docs-ratchet-baseline.json"
+
+# [comment_ratchet] -- the scaffold's baseline-and-ratchet lint for history in code
+# comments. The unit run (python -m unittest discover -s tests) includes
+# tests/test_comment_ratchet.py, which runs scripts/comment_ratchet.py: it fails when a
+# .py, .js, .css or .ps1 file gains a `#NNN` issue reference inside a comment beyond its
+# entry in .comment-ratchet-baseline.json. A comment states why the code is the way it is
+# now; how it got there lives in the issue, the PR and git log. Every vendored
+# destination is left out automatically. Existing references are baselined, never
+# excluded. Exit 3 (git unusable, a file that cannot be scanned) fails the run as
+# NOT CONFIRMED. Procedure: project-scaffolding docs/comment-ratchet.md.
+[comment_ratchet]
+enabled  = true
+baseline = ".comment-ratchet-baseline.json"

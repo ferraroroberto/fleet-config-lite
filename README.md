@@ -122,14 +122,14 @@ The hooks and skills are stdlib only; the test run's one dev dependency is ruff 
 
 ### The static-analysis ratchet
 
-`tests/test_static_ratchet.py` runs the vendored `scripts/static_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[static_ratchet]`). It compares the repo's duplicated blocks (`jscpd`) and unused imports/variables (`ruff` F401/F841) with the committed `.static-ratchet-baseline.json` and fails on any finding that is **new**, naming it by key; existing debt is baselined, never blocks, and cannot grow. Shrink the baseline in the PR that removes the debt (`python scripts/static_ratchet.py --update-baseline`); adding an entry needs the explicit `--allow-additions` flag and shows in review.
+`tests/test_static_ratchet.py` runs the vendored `scripts/static_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[static_ratchet]`). It compares the repo's duplicated blocks (`jscpd`), unused imports/variables (`ruff` F401/F841) and a curated set of ruff bug (`B`) and security (`S`) codes (`S113` flags every HTTP call without a timeout, `timeout=None` included) with the committed `.static-ratchet-baseline.json` and fails on any finding that is **new**, naming it by key; existing debt is baselined, never blocks, and cannot grow. Shrink the baseline in the PR that removes the debt (`python scripts/static_ratchet.py --update-baseline`); adding an entry needs the explicit `--allow-additions` flag and shows in review.
 
 Prerequisites, both on the machine that runs the tests:
 
 - **ruff** from `requirements-dev.txt`, importable by the interpreter that runs the tests (`python -m ruff`).
 - **Node (`npx`)** for `jscpd`; its first run downloads the pinned release, so it needs network once.
 
-The one baselined duplicate (`parse_owner_repo` and `detect_host` in `skills/codebase-audit/audit_gate.py` and `skills/prompt-audit/audit.py`) is accepted on purpose: each skill folder is junctioned into `~/.copilot/skills/` on its own and must work with no import across skills, so deduplicating would couple them. Leave the entry in the baseline; it cannot grow.
+Two duplicates are baselined on purpose. The first is `parse_owner_repo` and `detect_host` in `skills/codebase-audit/audit_gate.py` and `skills/prompt-audit/audit.py`: each skill folder is junctioned into `~/.copilot/skills/` on its own and must work with no import across skills, so deduplicating would couple them. The second is the shared docstring and wiring of `tests/test_conventions_ratchet.py` and `tests/test_dead_code_ratchet.py`, two stages of the same vendored-script contract. Leave both entries in the baseline; they cannot grow.
 
 A machine without them is **NOT CONFIRMED**, with the reason printed, and the test run **fails** — a detector that could not run has checked nothing, so it is never folded into a pass or a skip. `scripts/static_ratchet_gate.py` is the one place that maps the script's exit codes (0 pass; 1 new finding; 2 bad config; 3 detector could not run), and the ratchet is not a dependency of any hook or skill.
 
@@ -148,6 +148,10 @@ A machine without them is **NOT CONFIRMED**, with the reason printed, and the te
 ### The dead-code ratchet
 
 `tests/test_dead_code_ratchet.py` runs the vendored `scripts/dead_code_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]` together with the other vendored file, `skills/e2e/classify_e2e.py`; configured by `[dead_code_ratchet]`). It fails when a tracked Python file gains a function, class or method whose name is read nowhere else in the tree, beyond its entry in `.dead-code-ratchet-baseline.json`; the failure names the file, the line and the definition. Matching is by name, so it misses dead code rather than inventing it. The baseline is empty today, and no `allow` or `entry_decorators` is configured: hooks and skill scripts are plain functions called by name. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
+
+### The conventions ratchet
+
+`tests/test_conventions_ratchet.py` runs the vendored `scripts/conventions_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[conventions_ratchet]`). It holds the fleet conventions one `ast` rule can check, counted per file and rule against `.conventions-ratchet-baseline.json`, and fails when a count rises; the failure names the file, the line and the rule. Enabled here: `no-window` (hooks and skills spawn processes on Windows), `logging-not-print` (scoped to `hooks/` and `skills/`, the library code) and `no-drive-path`. `secret-compare` and `git-wrapper` stay off because the repo has no secret-compare or git helper for them to route through. The baseline is empty today. There is no `[e2e]` router table, so the baseline file needs no `tier = "none"` rule. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 

@@ -47,6 +47,12 @@ def passed(code: int) -> bool:
     return code == 0
 
 
+def assert_ratchet_passes(case: unittest.TestCase, script: Path) -> None:
+    """Run one vendored ratchet and fail `case` unless it exits 0; exit 3 reads as NOT CONFIRMED."""
+    code, output = run_ratchet(script)
+    case.assertTrue(passed(code), f"exit {code}" + (" (NOT CONFIRMED)" if code == 3 else "") + f"\n{output}")
+
+
 class ExitMapping(unittest.TestCase):
     def test_only_exit_zero_passes_and_three_is_not_a_pass(self) -> None:
         self.assertTrue(passed(0))

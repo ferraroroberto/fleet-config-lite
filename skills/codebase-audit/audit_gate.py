@@ -205,6 +205,9 @@ def decide(commit_count: int | None, stored_rubric: str | None, current_rubric: 
     return "AUDIT"
 
 
+# Each skill folder is installed on its own and must work with no import across skills, so
+# these remote-URL helpers are copied into skills/prompt-audit/audit.py, not shared.
+# jscpd:ignore-start
 def parse_owner_repo(remote_url: str) -> str:
     """'owner/repo' (GitLab subgroups keep their slashes) or '' if unparseable."""
     u = re.sub(r"\.git$", "", (remote_url or "").strip())
@@ -221,6 +224,7 @@ def parse_owner_repo(remote_url: str) -> str:
 
 def detect_host(remote_url: str) -> str:
     return "github" if "github.com" in (remote_url or "") else "gitlab"
+# jscpd:ignore-end
 
 
 # ---- git plumbing -----------------------------------------------------------

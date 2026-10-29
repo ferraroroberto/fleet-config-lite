@@ -19,13 +19,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `skills/prompt-audit/` | Capped audit of instruction files (at most 2 repos per run, this repo and its siblings) against the vendors' current prompting guides: `SKILL.md` + byte-identical `rules.md`/`sources.toml` + self-contained `audit.py` and its sibling `audit_lint.py` (freshness gate, lint, skip-unchanged ledger, digest; `gh` or `glab`) — see "The /prompt-audit skill" below |
 | `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported byte-for-byte in its `assets/`+`scripts/` from the private life-os repo |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
-| `scripts/static_ratchet.py`, `.static-ratchet-baseline.json` | Vendored static-analysis ratchet (duplicate blocks + unused imports/variables) and its committed baseline; test-time only, never a runtime dependency — see "Tests" below |
-| `scripts/structure_ratchet.py`, `.structure-ratchet-baseline.json`, `docs/layout.md` | Vendored structure ratchet (file size, function length, directory width, root layout) and its committed baseline; `docs/layout.md` says where new code goes — see "The structure ratchet" below |
-| `scripts/instruction_ratchet.py`, `.instruction-ratchet-baseline.json` | Vendored instruction ratchet (deterministic prompt-audit rules over the `SKILL.md` files and the docs they link) and its committed baseline; test-time only — see "The instruction ratchet" below |
-| `scripts/doc_refs_ratchet.py`, `.doc-refs-ratchet-baseline.json` | Vendored doc-references ratchet (repo paths, `python -m` modules and relative links named in `README.md` and `docs/`) and its committed baseline; test-time only — see "The doc-refs ratchet" below |
-| `scripts/dead_code_ratchet.py`, `.dead-code-ratchet-baseline.json` | Vendored dead-code ratchet (Python functions, classes and methods nothing references) and its committed baseline; test-time only — see "The dead-code ratchet" below |
-| `scripts/docs_ratchet.py`, `.docs-ratchet-baseline.json` | Vendored docs ratchet (root README size and the history markers in `README.md` and `docs/`) and its committed baseline; test-time only — see "The docs ratchet" below |
-| `scripts/comment_ratchet.py`, `.comment-ratchet-baseline.json` | Vendored comment ratchet (`#NNN` issue references inside code comments) and its committed baseline; test-time only — see "The comment ratchet" below |
+| `scripts/*_ratchet.py`, `.*-ratchet-baseline.json` | Eight vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment), test-time only — see "The ratchets" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -54,7 +48,7 @@ Copilot discovers whatever sits in `~/.copilot/skills/` — the junction target 
 
 `skills/e2e/` decides, runs, and maintains a project's end-to-end tests **proportionate to the actual diff**: a target repo declares path→tier rules in its own `.fleet.toml [e2e]` table, the bundled `classify_e2e.py` maps the changed files to `skip` / `static` / `full` (anything unmatched, malformed, or empty fails safe to `full` — uncertainty always escalates, never narrows), and the skill runs only that slice. `issue-finish` and `issue-yolo` call it before every merge request; it also runs standalone (`/e2e`, `/e2e plan`, `/e2e full`). On a repo without the router, it self-heals by copying the bundled classifier in byte-verbatim.
 
-The folder is **fully self-contained** — no dependency on any other repo or checkout; junction it (the installer already does) and it works anywhere with Python 3.11+. Provenance: `classify_e2e.py` is vendored byte-verbatim from `project-scaffolding` `scripts/classify_e2e.py` @ `6e3b3e0` (git blob `e61e182`); re-vendor deliberately by replacing the file whole, never by editing it.
+The folder is **fully self-contained** — no dependency on any other repo or checkout; junction it (the installer already does) and it works anywhere with Python 3.11+. Provenance: `classify_e2e.py` is vendored byte-verbatim from `project-scaffolding` `scripts/classify_e2e.py`; the kept-current record is the `classify_e2e` row in `.fleet.toml`'s `[vendored]` table. Re-vendor deliberately by replacing the file whole, never by editing it.
 
 ## The /learning-log skill
 
@@ -122,46 +116,22 @@ python -m unittest discover -s tests -v
 
 The hooks and skills are stdlib only; the test run's one dev dependency is ruff (`requirements-dev.txt`, pinned), and nothing in it ships to the machines `install.ps1` wires up.
 
-### The static-analysis ratchet
+### The ratchets
 
-`tests/test_static_ratchet.py` runs the vendored `scripts/static_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[static_ratchet]`). It compares the repo's duplicated blocks (`jscpd`), unused imports/variables (`ruff` F401/F841) and a curated set of ruff bug (`B`) and security (`S`) codes (`S113` flags every HTTP call without a timeout, `timeout=None` included) with the committed `.static-ratchet-baseline.json` and fails on any finding that is **new**, naming it by key; existing debt is baselined, never blocks, and cannot grow. Shrink the baseline in the PR that removes the debt (`python scripts/static_ratchet.py --update-baseline`); adding an entry needs the explicit `--allow-additions` flag and shows in review.
+Eight vendored baseline-and-ratchet quality gates run inside `python -m unittest discover -s tests` — each wraps a `project-scaffolding` script byte-for-byte, declared in `.fleet.toml`'s `[vendored]` table and configured by its own table there. All eight share the same mechanics: existing debt sits in a committed `.<name>-ratchet-baseline.json`, baselined and never excluded, so nothing may grow past its baselined count; shrink a baseline with `--update-baseline`, grow one only with the explicit `--allow-additions` flag (which shows in review); and exit 3 — the detector could not run — always fails the test as **NOT CONFIRMED**, never folded into a pass. Every baseline here is empty today, and none needs anything beyond stdlib to run except the static ratchet.
 
-Prerequisites, both on the machine that runs the tests:
+| Ratchet | Fails on | Config table |
+|---|---|---|
+| static | a new duplicate block (`jscpd`), unused import/variable (ruff F401/F841), or curated ruff bug/security finding (B/S codes, `S113` included) | `[static_ratchet]` |
+| structure | a file over 1,000 lines, a function over 100 lines, a directory over 40 modules, or a root layout that no longer matches `shape` + `extra_roots` | `[structure_ratchet]` |
+| instruction | a `SKILL.md` (or a doc it links) gaining a prompt-audit rule hit, or passing a size cap | `[instruction_ratchet]` |
+| doc-refs | a dangling repo path, `python -m` module, or relative link in `README.md`/`docs/**/*.md` | `[doc_refs_ratchet]` |
+| dead-code | a Python function, class or method nothing else in the tree references | `[dead_code_ratchet]` |
+| conventions | a rising count for an enabled fleet-convention `ast` rule (`no-window`, `logging-not-print`, `no-drive-path`) | `[conventions_ratchet]` |
+| docs | `README.md` over 40 KiB, or a new history marker (issue reference, dated heading, changelog heading) | `[docs_ratchet]` |
+| comment | a new issue reference inside a code comment | `[comment_ratchet]` |
 
-- **ruff** from `requirements-dev.txt`, importable by the interpreter that runs the tests (`python -m ruff`).
-- **Node (`npx`)** for `jscpd`; its first run downloads the pinned release, so it needs network once.
-
-The baseline is empty. One duplicate is intentional and declared in the source instead: `parse_owner_repo` and `detect_host` in `skills/codebase-audit/audit_gate.py` sit between `# jscpd:ignore-start` and `# jscpd:ignore-end` markers (the copy in `skills/prompt-audit/audit.py` stays unmarked), because each skill folder is junctioned into `~/.copilot/skills/` on its own and must work with no import across skills, so deduplicating would couple them. The ratchet tests share one assertion, `assert_ratchet_passes` in `tests/test_structure_ratchet.py`.
-
-A machine without them is **NOT CONFIRMED**, with the reason printed, and the test run **fails** — a detector that could not run has checked nothing, so it is never folded into a pass or a skip. `scripts/static_ratchet_gate.py` is the one place that maps the script's exit codes (0 pass; 1 new finding; 2 bad config; 3 detector could not run), and the ratchet is not a dependency of any hook or skill.
-
-### The structure ratchet
-
-`tests/test_structure_ratchet.py` runs the vendored `scripts/structure_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[structure_ratchet]`, shape `skills-governance`). It fails when a file passes 1,000 lines, a function 100 lines or a directory 40 modules and is new or above its entry in `.structure-ratchet-baseline.json`, or when the root folders do not match `shape` plus `extra_roots`. The baseline is empty, so a file nearing a limit splits into a sibling module instead of growing. Exit 3 (could not measure) fails as NOT CONFIRMED. Where new code goes: [docs/layout.md](docs/layout.md). Stdlib only: no new dependency.
-
-### The instruction ratchet
-
-`tests/test_instruction_ratchet.py` runs the vendored `scripts/instruction_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[instruction_ratchet]` with `skill_dirs = ["skills"]`; this repo has no `CLAUDE.md` or `AGENTS.md`). It runs the weekly prompt audit's deterministic rules over every `skills/*/SKILL.md` and the docs a skill links, and fails when a file gains a hit on a rule that counts for its readers, or passes a size cap, beyond its entry in `.instruction-ratchet-baseline.json`; the failure names the file, the rule and the line. The baseline is empty. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
-
-### The doc-refs ratchet
-
-`tests/test_doc_refs_ratchet.py` runs the vendored `scripts/doc_refs_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[doc_refs_ratchet]`). It fails when `README.md` or a `docs/**/*.md` file names a repo path, a `python -m` module or a relative link that does not exist, beyond its entry in `.doc-refs-ratchet-baseline.json`; the failure names the doc, the line and the reference. The baseline is empty today. `allow_refs` lists the one intentional pointer, the shared-helper folder `docs/layout.md` says the first shared helper creates. No `port` is declared, so ports are not checked, and there is no `CLAUDE.md`. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
-
-### The dead-code ratchet
-
-`tests/test_dead_code_ratchet.py` runs the vendored `scripts/dead_code_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]` together with the other vendored file, `skills/e2e/classify_e2e.py`; configured by `[dead_code_ratchet]`). It fails when a tracked Python file gains a function, class or method whose name is read nowhere else in the tree, beyond its entry in `.dead-code-ratchet-baseline.json`; the failure names the file, the line and the definition. Matching is by name, so it misses dead code rather than inventing it. The baseline is empty today, and no `allow` or `entry_decorators` is configured: hooks and skill scripts are plain functions called by name. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
-
-### The conventions ratchet
-
-`tests/test_conventions_ratchet.py` runs the vendored `scripts/conventions_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[conventions_ratchet]`). It holds the fleet conventions one `ast` rule can check, counted per file and rule against `.conventions-ratchet-baseline.json`, and fails when a count rises; the failure names the file, the line and the rule. Enabled here: `no-window` (hooks and skills spawn processes on Windows), `logging-not-print` (scoped to `hooks/` and `skills/`, the library code) and `no-drive-path`. `secret-compare` and `git-wrapper` stay off because the repo has no secret-compare or git helper for them to route through. The baseline is empty today. There is no `[e2e]` router table, so the baseline file needs no `tier = "none"` rule. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
-
-### The docs ratchet
-
-`tests/test_docs_ratchet.py` runs the vendored `scripts/docs_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[docs_ratchet]`). It holds the README and docs convention in two per-file measures against `.docs-ratchet-baseline.json`: the root `README.md` stays under 40 KiB, and `README.md` and `docs/**/*.md` carry no more history markers (an issue reference, a dated heading or a changelog heading) than their entry; the failure names the file, the line and the marker. The README is under budget and the baseline is empty today. Exit 3 (could not measure) fails as NOT CONFIRMED. Stdlib only: no new dependency.
-
-### The comment ratchet
-
-`tests/test_comment_ratchet.py` runs the vendored `scripts/comment_ratchet.py` (byte-for-byte from `project-scaffolding`, declared in `.fleet.toml [vendored]`, configured by `[comment_ratchet]`). It counts `#NNN` issue references inside the comments of the repo's Python, JavaScript, CSS and PowerShell files, per file, and fails when a count rises above its entry in `.comment-ratchet-baseline.json`; the failure names the file and the line. A comment states why the code is the way it is now; how it got there lives in the issue, the PR and `git log`. Vendored files are left out automatically. The baseline is empty today. Exit 3 (could not scan) fails as NOT CONFIRMED. Stdlib only: no new dependency.
+Per-ratchet specifics that don't fit the table — the static ratchet's extra prerequisites (ruff + Node's `npx` for `jscpd`), the intentional duplicate carved out of `audit_gate.py`, `doc_refs_ratchet`'s `allow_refs`, and the rest — live in [docs/ratchets.md](docs/ratchets.md).
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 

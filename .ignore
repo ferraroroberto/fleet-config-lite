@@ -6,6 +6,7 @@
 /scripts/docs_ratchet.py
 /scripts/instruction_ratchet.py
 /scripts/static_ratchet.py
+/scripts/structure_layout.py
 /scripts/structure_ratchet.py
 /skills/e2e/classify_e2e.py
 # END vendored-copies

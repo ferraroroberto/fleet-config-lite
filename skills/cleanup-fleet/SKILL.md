@@ -35,13 +35,18 @@ costs one issue's worth of credits, not a fleet's.
    ```
 
 5. **Work** the first `max` rows, sequentially, inside each repo:
-   - **easy** → run this repo's `/issue-yolo <N>` end-to-end (branch, build, gate, `/e2e`, MR, merge, land). The MR ticks the boxes it fixed in the issue body; it never closes the issue with `Closes #N` unless every box is now ticked.
-   - **hard** → run `/issue-start <N> now`, build, run the verification gate, then **stop before push** and hand back a plain-English summary of what changed and why, for the human to ship with `/issue-finish`.
+   - **easy** → run this repo's `/issue-yolo <N>` end-to-end (branch, build, gate, `/e2e`, MR, merge, land), with the **ship override** below.
+   - **hard** → run `/issue-start <N> now`, build, run the verification gate, then **stop before push** and hand back a plain-English summary of what changed and why, plus the ship override below for the human to apply when running `/issue-finish`.
+
+   **Ship override (both paths).** `/issue-yolo` and `/issue-finish` default to `Closes #<N>`, which would auto-close the audit issue on merge and drop every unfixed item from the backlog (the next audit only reuses *open* managed issues). So:
+
+   - The MR description says `Closes #<N>` only when every `- [ ]` item is fixed by this MR; otherwise it says `Part of #<N>`. (`audit_gate.py` still skips the commit, since any `#N` of an audit issue counts as a reference.)
+   - After the merge, tick the fixed items: fetch the body with `audit_gate.py get`, change `- [ ]` to `- [x]` on exactly the fixed items, and write it back with `audit_gate.py upsert --kind <bucket> --label <bucket> --title "audit: <bucket> findings" --body-file <tmp>` (works on GitHub and GitLab; an MR cannot edit an issue body). Skip this when `Closes #<N>` already closed the issue.
 6. **Report** what merged, what is waiting for review, what was deferred.
 
 ## Hard rules
 
 - One repo at a time, never two branches in one checkout.
-- Never tick or close an audit issue by hand; the checklist is a living backlog and the MR is what ticks it.
+- Never close an audit issue by hand, and never tick an item this run did not fix and merge; the checklist is a living backlog. Ticking goes only through the post-merge `audit_gate.py upsert` step, and closing only through `Closes #<N>` on an MR that fixes the last unticked item.
 - Never widen scope past the checklist items: an unrelated bug found on the way gets its own issue via `/issue-add`.
 - A red gate stops that repo's work and is reported; the loop moves on.

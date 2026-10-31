@@ -15,44 +15,16 @@ tables** (PRs/MRs, issues, LOC, by repo and by work-type) and (b) fan out
 root-causes, and durable lessons. Aggregate into a themed log, **grade the
 last horizon**, and set the next one.
 
-Ported from the private `fleet-config`'s `.claude/skills/learning-log`
-(per this repo's own README: "when a capability is missing here, port it
-from there deliberately rather than re-inventing it"), but reshaped to fit
-this repo's principles rather than copied verbatim:
+Operating rules this skill encodes:
 
-- **No scheduler.** The source skill runs unattended on a weekly Windows Task
-  Scheduler job (`run-weekly.bat` + an app-launcher Job). This repo's README
-  states "no schedulers" — this port is **manual-invoke only**. There is no
-  `run-weekly.bat`, no wiring section, no unattended entry point.
-- **Model-agnostic insight step, not "no LLM calls".** fleet-config's
-  version hardcodes Sonnet sub-agents. That's a genuine, narrow carve-out
-  from this repo's stated "no LLM calls" principle — accepted deliberately
-  for this one skill, on the condition that the insight step never
-  hardcodes a vendor/model name: it uses whichever model/agent is already
-  running this session, at low reasoning effort (this step extracts
-  patterns from a short bucket file, not deep work). See step 2.
-- **Host-agnostic, not GitHub-only.** fleet-config's version is hardcoded to
-  `gh`/GitHub. This repo's other skills (`issue-add`, `issue-start`,
-  `issue-finish`) target GitLab via `glab`. This port detects which host the
-  *current* repo's `origin` remote points at and drives the matching CLI —
-  gathering from siblings on that same host, under the same owner/group.
-- **No external helper dependency.** fleet-config's version calls out to
-  `C:/Users/rober/.claude/skills/_lib/audit_issue.py`, `no_window.py`,
-  `claude_progress.py`, and `hooks/notify_complete.py` — none of which exist
-  in fleet-config-lite. This port's `gather.py` is fully self-contained
-  (stdlib + `gh`/`glab` only) and owns its own ledger upsert + comment logic.
-- **No Slack ping.** fleet-config-lite has no notification helper; the final
-  report (step 5) is the only output.
-
-**Verified vs. assumed:** this repo's own `origin` is GitHub, and `gh` is
-what's actually installed on the machine this was built on — the GitHub path
-in `gather.py` is exercised live (read-only) against this repo. The GitLab
-path is written to `glab`'s documented CLI shape but is **not** live-tested
-here (`glab` isn't installed on this dev machine) — the same caveat already
-applies to this repo's other `glab`-based skills. GitLab's MR/issue list API
-also doesn't expose per-item diff stats the way GitHub's does, so
-additions/deletions stay `0` on the GitLab path — a known fidelity gap, not
-a bug.
+- **Manual invoke only.** There is no scheduler and no unattended entry point.
+- **Model-agnostic insight step.** Sub-agents use whichever model/agent is
+  already running this session, at low reasoning effort, and never a
+  hardcoded vendor/model name (see step 2).
+- **Host detected from `origin`.** `gather.py` drives `gh` or `glab` to match
+  and is self-contained (stdlib + the host CLI). The `glab` path is not
+  live-tested, and GitLab's list API exposes no per-item diff stats, so
+  additions/deletions stay `0` there.
 
 ## Arguments
 

@@ -1,19 +1,12 @@
 """Gather + bucket + stat the sibling-repo work stream for /learning-log (lite).
 
-Host-agnostic port of fleet-config's `.claude/skills/learning-log/gather.py`,
-scoped down for fleet-config-lite: no dependency on any fleet-config-only
-helper (`audit_issue.py`, `no_window.py`, `claude_progress.py`,
-`notify_complete.py` don't exist here), no scheduler, self-contained.
+Self-contained (stdlib + `gh`/`glab`), host-agnostic, no scheduler.
 
 Detects whether the *current* repo's `origin` remote is GitHub or GitLab
-(`git remote get-url origin`) and drives the matching CLI (`gh` or `glab`)
-throughout — the sibling repos gathered are whichever other repos share the
-same owner/group on that same host. This repo itself is GitHub-hosted and
-`gh` is what's actually installed on the dev machine this was built on, so
-the GitHub path is exercised live. The GitLab path is written to `glab`'s
-documented CLI shape but is **not** live-tested here (`glab` isn't installed
-on this machine) — the same caveat already applies to this repo's other
-`glab`-based skills (issue-add/issue-start/issue-finish).
+(`git remote get-url origin`) and drives the matching CLI throughout — the
+sibling repos gathered are whichever other repos share the same owner/group on
+that host. The GitLab path follows `glab`'s documented CLI shape and is not
+live-tested.
 
 It does NOT narrate — that's the calling skill's job (SKILL.md), which reads
 the bucket files and dispatches an insight sub-agent per bucket. This script

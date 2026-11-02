@@ -19,7 +19,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `skills/prompt-audit/` | Capped audit of instruction files (at most 2 repos per run, this repo and its siblings) against the vendors' current prompting guides: `SKILL.md` + byte-identical `rules.md`/`sources.toml` + self-contained `audit.py` and its sibling `audit_lint.py` (freshness gate, lint, skip-unchanged ledger, digest; `gh` or `glab`) — see "The /prompt-audit skill" below |
 | `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported byte-for-byte in its `assets/`+`scripts/` from the private life-os repo |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
-| `scripts/*_ratchet.py`, `.*-ratchet-baseline.json` | Eight vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment), test-time only — see "The ratchets" below |
+| `scripts/*_ratchet.py`, `.*-ratchet-baseline.json` | Nine vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment, runtime write), test-time only — see "The ratchets" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -118,7 +118,7 @@ The hooks and skills are stdlib only; the test run's one dev dependency is ruff 
 
 ### The ratchets
 
-Eight vendored baseline-and-ratchet quality gates run inside `python -m unittest discover -s tests` — each wraps a `project-scaffolding` script byte-for-byte, declared in `.fleet.toml`'s `[vendored]` table and configured by its own table there. All eight share the same mechanics: existing debt sits in a committed `.<name>-ratchet-baseline.json`, baselined and never excluded, so nothing may grow past its baselined count; shrink a baseline with `--update-baseline`, grow one only with the explicit `--allow-additions` flag (which shows in review); and exit 3 — the detector could not run — always fails the test as **NOT CONFIRMED**, never folded into a pass. Every baseline here is empty today, and none needs anything beyond stdlib to run except the static ratchet.
+Nine vendored baseline-and-ratchet quality gates run inside `python -m unittest discover -s tests` — each wraps a `project-scaffolding` script byte-for-byte, declared in `.fleet.toml`'s `[vendored]` table and configured by its own table there. All nine share the same mechanics: existing debt sits in a committed `.<name>-ratchet-baseline.json`, baselined and never excluded, so nothing may grow past its baselined count; shrink a baseline with `--update-baseline`, grow one only with the explicit `--allow-additions` flag (which shows in review); and exit 3 — the detector could not run — always fails the test as **NOT CONFIRMED**, never folded into a pass. Every baseline here but the runtime write one is empty today, and none needs anything beyond stdlib to run except the static ratchet.
 
 | Ratchet | Fails on | Config table |
 |---|---|---|
@@ -130,6 +130,7 @@ Eight vendored baseline-and-ratchet quality gates run inside `python -m unittest
 | conventions | a rising count for an enabled fleet-convention `ast` rule (`no-window`, `logging-not-print`, `no-drive-path`) | `[conventions_ratchet]` |
 | docs | `README.md` over 40 KiB, or a new history marker (issue reference, dated heading, changelog heading) | `[docs_ratchet]` |
 | comment | a new issue reference inside a code comment | `[comment_ratchet]` |
+| runtime write | a Python write target resolving under a code folder (`hooks/`, `skills/`, `scripts/`) beyond the baseline; a new target it cannot resolve is NOT CONFIRMED | `[runtime_write_ratchet]` |
 
 Per-ratchet specifics that don't fit the table — the static ratchet's extra prerequisites (ruff + Node's `npx` for `jscpd`), the intentional duplicate carved out of `audit_gate.py`, `doc_refs_ratchet`'s `allow_refs`, and the rest — live in [docs/ratchets.md](docs/ratchets.md).
 

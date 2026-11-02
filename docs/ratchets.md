@@ -1,8 +1,8 @@
 # Ratchets
 
-Per-ratchet specifics for the eight vendored baseline-and-ratchet quality gates
+Per-ratchet specifics for the nine vendored baseline-and-ratchet quality gates
 listed in the root [README.md](../README.md)'s "The ratchets" table. The
-mechanics shared by all eight — vendoring, the never-shrinks-except-by-review
+mechanics shared by all nine — vendoring, the never-shrinks-except-by-review
 baseline, exit 3 always failing as NOT CONFIRMED — are stated once there; this
 page only carries what differs per ratchet.
 
@@ -66,3 +66,11 @@ needs no `tier` rule.
 
 Every vendored destination is excluded automatically, since the ratchet only
 scans tracked, non-vendored files.
+
+## runtime write
+
+Vendored with its sibling `scripts/runtime_write_resolve.py`, which the script
+imports. The default code folders apply. The baseline records today's 10 write
+targets the static resolver cannot place (`unresolved`) and no code-folder hit.
+The script's `--snapshot`/`--probe` pair is not wired: the tests are the gate
+run itself, so there is no stage outside them to bracket.

@@ -5,7 +5,7 @@
 layer        = "enabling"
 icon         = "🧰"
 display_name = "Fleet Config Lite"
-description  = "Lite fork of fleet-config: Copilot CLI session hooks, issue-workflow skills and installer."
+description  = "Lite fleet-config: Copilot CLI hooks, issue-workflow skills and installer."
 shape        = "skills-governance"
 extra_roots  = ["hook-config"]
 

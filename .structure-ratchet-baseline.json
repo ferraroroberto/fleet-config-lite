@@ -2,5 +2,10 @@
   "version": 1,
   "band": {"files": 0, "functions": 0},
   "root_extras": ["hook-config"],
+  "shape_contract": {
+    "root_files": ["global-instructions.md"],
+    "redundant": [],
+    "folder_types": {}
+  },
   "entries": []
 }

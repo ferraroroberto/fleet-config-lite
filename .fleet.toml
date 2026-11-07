@@ -17,7 +17,7 @@ structure_band = { src = "scripts/structure_band.py", sha = "3b708fd3c54ab7b93b0
 instruction_ratchet = { src = "scripts/instruction_ratchet.py", sha = "5505185c5f4b10eea5ab268e7b6676c6c54340c4", dest = "scripts/instruction_ratchet.py" }
 doc_refs_ratchet = { src = "scripts/doc_refs_ratchet.py", sha = "dedb86e0f212d66f247f4aacb6c15d13b1154651", dest = "scripts/doc_refs_ratchet.py" }
 dead_code_ratchet = { src = "scripts/dead_code_ratchet.py", sha = "5505185c5f4b10eea5ab268e7b6676c6c54340c4", dest = "scripts/dead_code_ratchet.py" }
-conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "41ca8abd5a2755a06bd8a620a72967211161d58e", dest = "scripts/conventions_ratchet.py" }
+conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "e55de9619b9625c5499e1b9077350f9860e6037b", dest = "scripts/conventions_ratchet.py" }
 runtime_write_ratchet = { src = "scripts/runtime_write_ratchet.py", sha = "5505185c5f4b10eea5ab268e7b6676c6c54340c4", dest = "scripts/runtime_write_ratchet.py" }
 runtime_write_resolve = { src = "scripts/runtime_write_resolve.py", sha = "5505185c5f4b10eea5ab268e7b6676c6c54340c4", dest = "scripts/runtime_write_resolve.py" }
 docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "5505185c5f4b10eea5ab268e7b6676c6c54340c4", dest = "scripts/docs_ratchet.py" }
@@ -33,6 +33,7 @@ classify_e2e = { src = "scripts/classify_e2e.py", sha = "5d460bd1d9d44eed955c535
 # Needs Node and ruff on the interpreter that runs the tests; a detector that cannot
 # run exits 3, which fails the run as NOT CONFIRMED. Procedure + limits:
 # project-scaffolding docs/static-ratchet.md.
+conventions_readers = { src = "scripts/conventions_readers.py", sha = "e55de9619b9625c5499e1b9077350f9860e6037b", dest = "scripts/conventions_readers.py" }
 [static_ratchet]
 enabled  = true
 baseline = ".static-ratchet-baseline.json"

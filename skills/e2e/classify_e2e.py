@@ -27,7 +27,7 @@ Tiers:
                 ``full_pytest_target`` (the whole e2e suite by default). This
                 is the fail-safe default: uncertainty always escalates to
                 full coverage, never narrows it.
-  * ``surface`` a narrowing of ``full`` (project-scaffolding#258): the diff
+  * ``surface`` a narrowing of ``full``: the diff
                 would route ``full``, but every ``full`` path belongs to ONE
                 declared ``[[e2e.surface]]`` -> only that surface's
                 ``pytest_targets`` run (plus ``static_pytest_target`` when a
@@ -38,7 +38,7 @@ Tiers:
                 keeps the whole-suite ``full``. Without ``[[e2e.surface]]``
                 routing is exactly the three tiers above.
 
-Two narrowings feed ``surface`` (project-scaffolding#289):
+Two narrowings feed ``surface``:
 
   * a declared **shared stylesheet** (``[e2e] shared_stylesheets``) is owned,
     for this diff only, by the one surface whose ``selectors`` prefixes claim
@@ -61,6 +61,7 @@ route:
 from __future__ import annotations
 
 import difflib
+import os
 import re
 import subprocess
 import sys
@@ -424,7 +425,7 @@ def _sheet_owner(
 
 
 def _self_only_module(path: str, config: E2EConfig) -> bool:
-    """An e2e test module that only its own run can break (#289).
+    """An e2e test module that only its own run can break.
 
     `test_*.py` / `*_test.py` inside the suite, present on disk (a deleted
     module has nothing to run), and imported by no other suite file.
@@ -466,7 +467,7 @@ def _narrow_to_surface(
     harness drives (this repo's component gallery), so a static path no
     surface owns keeps the whole suite rather than riding along on a smoke run.
     A shared stylesheet takes the one surface owning every rule it changes, and
-    a self-only e2e module adds just itself (#289).
+    a self-only e2e module adds just itself.
     """
     if any(label == "unclassified" for _, _, label in classified):
         return None
@@ -575,6 +576,12 @@ def classify(
 # `src/no_window.py`, which would not resolve in a consumer's tree. Deriving
 # the flag locally here is the documented vendor-verbatim exception, not drift.
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+# A git call that outlives this is wedged (a stale lock, a hung credential helper); an empty answer
+# escalates the route to `full`, where a hung gate would report nothing.
+_GIT_TIMEOUT_S = 120
+# A read-only git still refreshes the index and takes the optional index.lock; beside another git
+# in the checkout that can strand a 0-byte lock, invisible to reads but blocking add/commit/pull.
+_GIT_ENV_KEY = "GIT_OPTIONAL_LOCKS"
 
 
 def _run_git(args: list[str]) -> list[str]:
@@ -586,9 +593,10 @@ def _run_git(args: list[str]) -> list[str]:
         out = subprocess.run(
             ["git", *args],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
-            stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW,
+            stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW, timeout=_GIT_TIMEOUT_S,
+            env={**os.environ, _GIT_ENV_KEY: "0"},
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return []
     if out.returncode != 0:
         return []
@@ -626,9 +634,10 @@ def _git_text(args: list[str]) -> str | None:
         out = subprocess.run(
             ["git", *args],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
-            stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW,
+            stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW, timeout=_GIT_TIMEOUT_S,
+            env={**os.environ, _GIT_ENV_KEY: "0"},
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return None
     return out.stdout if out.returncode == 0 else None
 

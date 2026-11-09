@@ -118,7 +118,7 @@ The hooks and skills are stdlib only; the test run's one dev dependency is ruff 
 
 ### The ratchets
 
-Nine vendored baseline-and-ratchet quality gates run inside `python -m unittest discover -s tests` — each wraps a `project-scaffolding` script byte-for-byte, declared in `.fleet.toml`'s `[vendored]` table and configured by its own table there. All nine share the same mechanics: existing debt sits in a committed `.<name>-ratchet-baseline.json`, baselined and never excluded, so nothing may grow past its baselined count; shrink a baseline with `--update-baseline`, grow one only with the explicit `--allow-additions` flag (which shows in review); and exit 3 — the detector could not run — always fails the test as **NOT CONFIRMED**, never folded into a pass. Every baseline here but the runtime write one is empty today, and none needs anything beyond stdlib to run except the static ratchet.
+Nine vendored baseline-and-ratchet quality gates run inside `python -m unittest discover -s tests` — each wraps a `project-scaffolding` script byte-for-byte, declared in `.fleet.toml`'s `[vendored]` table and configured by its own table there. All nine share the same mechanics: existing debt sits in a committed `.<name>-ratchet-baseline.json`, baselined and never excluded, so nothing may grow past its baselined count; shrink a baseline with `--update-baseline`, grow one only with the explicit `--allow-additions` flag (which shows in review); and exit 3 — the detector could not run — always fails the test as **NOT CONFIRMED**, never folded into a pass. Every baseline here is empty today, and none needs anything beyond stdlib to run except the static ratchet.
 
 | Ratchet | Fails on | Config table |
 |---|---|---|

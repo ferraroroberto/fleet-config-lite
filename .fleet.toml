@@ -120,6 +120,8 @@ print_paths = ["hooks/", "skills/"]
 [runtime_write_ratchet]
 enabled  = true
 baseline = ".runtime-write-ratchet-baseline.json"
+# state_file() resolves to the hooks state dir (env override or the home folder), never the tree.
+safe_calls = ["state_file"]
 
 # [docs_ratchet] -- the scaffold's baseline-and-ratchet lint for the README and docs
 # convention. The unit run (python -m unittest discover -s tests) includes

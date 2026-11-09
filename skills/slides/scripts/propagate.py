@@ -123,6 +123,7 @@ def propagate(source: Path, deck_dir: Optional[Path] = None) -> int:
         rewritten.append((target, new_text))
 
     for target, new_text in rewritten:
+        # runtime-write-exempt: stamping the caller's deck files in place is the command's purpose
         target.write_text(new_text, encoding="utf-8", newline="")
         log.info("✅ stamped %s", target.name)
     log.info("✅ propagated %d block(s) into %d file(s).", len(blocks), len(rewritten))

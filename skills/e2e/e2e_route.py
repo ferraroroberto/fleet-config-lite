@@ -192,7 +192,9 @@ def cmd_bootstrap(repo: Path, source: Path, force: bool) -> int:
             print("BOOTSTRAP=refused REASON=existing classifier differs from the bundled "
                   "one (custom implementation - migrate deliberately with --force)")
             return 1
+    # runtime-write-exempt: the destination is a repo the caller named, never this checkout
     dest.parent.mkdir(parents=True, exist_ok=True)
+    # runtime-write-exempt: the destination is a repo the caller named, never this checkout
     dest.write_bytes(source.read_bytes())
     if not files_identical(source, dest):
         print("BOOTSTRAP=error REASON=post-copy verification failed (bytes differ)")

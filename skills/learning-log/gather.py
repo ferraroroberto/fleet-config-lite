@@ -293,6 +293,7 @@ def write_bucket_files(out_dir: Path, prs: list[dict], issues: list[dict]) -> li
         for i in bi:
             tag = f" [{','.join(i['labels'])}]" if i["labels"] else ""
             lines.append(f"- [{i['repo']}#{i['number']}] {i['title']}{tag}")
+        # runtime-write-exempt: out_dir defaults to a temp dir; an --out-dir override is the caller's choice
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         manifest.append((bucket, slug, len(bp), len(bi), path))
     return manifest
@@ -493,6 +494,7 @@ def cmd_gather(args) -> int:
     since, source = resolve_since(args.since, prior_body, _dt.date.today())
 
     out_dir = Path(args.out_dir or (Path(tempfile.gettempdir()) / f"learning-log-{today}"))
+    # runtime-write-exempt: out_dir defaults to a temp dir; an --out-dir override is the caller's choice
     out_dir.mkdir(parents=True, exist_ok=True)
 
     siblings = list_sibling_repos(host, owner)
@@ -509,8 +511,10 @@ def cmd_gather(args) -> int:
     stats = compute_stats(all_prs, all_issues)
     stats_md = render_stats(stats, since, today)
     stats_file = out_dir / "stats.md"
+    # runtime-write-exempt: out_dir defaults to a temp dir; an --out-dir override is the caller's choice
     stats_file.write_text(stats_md, encoding="utf-8")
 
+    # runtime-write-exempt: out_dir defaults to a temp dir; an --out-dir override is the caller's choice
     (out_dir / "prior-horizon.md").write_text(
         slice_section(prior_body, HORIZON_HEADER) or "(none -- first run, no prior horizon to grade)",
         encoding="utf-8")
@@ -540,6 +544,7 @@ def cmd_assemble_ledger(args) -> int:
     horizon = Path(args.horizon_file).read_text(encoding="utf-8") if args.horizon_file else ""
     discoveries = Path(args.discoveries_file).read_text(encoding="utf-8") if args.discoveries_file else ""
     body = build_ledger_body(prior_body, today, horizon, discoveries)
+    # runtime-write-exempt: --out is the file the caller asked the ledger body to be written to
     Path(args.out).write_text(body, encoding="utf-8")
     print(args.out)
     return 0

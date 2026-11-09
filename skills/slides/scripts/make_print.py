@@ -143,6 +143,7 @@ def make_print(
     first_title = TITLE_RE.search(slides[0].read_text(encoding="utf-8"))
     deck_title = first_title.group(1).split("·")[0].strip() if first_title else deck_dir.name
     out = deck_dir / out_name
+    # runtime-write-exempt: print.html is the deliverable, written into the deck dir the caller named
     out.write_text(
         PAGE_SHELL.format(title=f"{deck_title} · print", pages=pages),
         encoding="utf-8",

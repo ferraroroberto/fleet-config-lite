@@ -1,10 +1,4 @@
 {
   "version": 1,
-  "entries": [
-    {"key": "hooks/session_state.py", "counts": {"unresolved": 1}},
-    {"key": "skills/e2e/e2e_route.py", "counts": {"unresolved": 2}},
-    {"key": "skills/learning-log/gather.py", "counts": {"unresolved": 5}},
-    {"key": "skills/slides/scripts/make_print.py", "counts": {"unresolved": 1}},
-    {"key": "skills/slides/scripts/propagate.py", "counts": {"unresolved": 1}}
-  ]
+  "entries": []
 }

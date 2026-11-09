@@ -32,7 +32,10 @@ class Declaration(unittest.TestCase):
         table = fleet["conventions_ratchet"]
         # secret-compare and git-wrapper refuse to run without a declared helper, and
         # this repo has none.
-        self.assertEqual(set(table["rules"]), {"no-window", "logging-not-print", "no-drive-path"})
+        self.assertEqual(
+            set(table["rules"]),
+            {"no-window", "logging-not-print", "no-drive-path", "state-literal", "state-set-repeat", "state-write"},
+        )
         self.assertNotIn("secret_helpers", table)
         self.assertNotIn("git_wrappers", table)
 

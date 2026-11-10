@@ -61,7 +61,7 @@ class SessionStateTests(unittest.TestCase):
     # ---- event → status ----------------------------------------------------
 
     def test_prompt_writes_working_row(self):
-        session_state.upsert_from_payload(_payload(prompt="go"), "userPromptSubmitted")
+        session_state.apply_event(_payload(prompt="go"), "userPromptSubmitted")
         row = self._rows()["abc-123"]
         self.assertEqual(row["status"], "working")
         self.assertEqual(row["project"], "some-project")
@@ -70,7 +70,7 @@ class SessionStateTests(unittest.TestCase):
         self.assertTrue(row["updated_at"].endswith("Z"))
 
     def test_agent_stop_writes_needs_you_with_transcript(self):
-        session_state.upsert_from_payload(
+        session_state.apply_event(
             _payload(transcriptPath="C:\\t\\events.jsonl", stopReason="end_turn"),
             "agentStop",
         )
@@ -79,32 +79,16 @@ class SessionStateTests(unittest.TestCase):
         self.assertEqual(row["transcript_path"], "C:\\t\\events.jsonl")
 
     def test_transcript_survives_next_prompt(self):
-        session_state.upsert_from_payload(
+        session_state.apply_event(
             _payload(transcriptPath="C:\\t\\events.jsonl"), "agentStop"
         )
-        session_state.upsert_from_payload(_payload(prompt="again"), "userPromptSubmitted")
+        session_state.apply_event(_payload(prompt="again"), "userPromptSubmitted")
         row = self._rows()["abc-123"]
         self.assertEqual(row["status"], "working")
         self.assertEqual(row["transcript_path"], "C:\\t\\events.jsonl")
 
-    def test_session_start_never_downgrades_working(self):
-        # Non-interactive Copilot fires sessionStart AFTER userPromptSubmitted
-        # (verified live, CLI 1.0.70) — the late arrival must not flip the row.
-        session_state.upsert_from_payload(_payload(prompt="go"), "userPromptSubmitted")
-        session_state.upsert_from_payload(_payload(source="new"), "sessionStart")
-        self.assertEqual(self._rows()["abc-123"]["status"], "working")
-
-    def test_session_start_creates_idle_row_when_absent(self):
-        session_state.upsert_from_payload(_payload(source="new"), "sessionStart")
-        self.assertEqual(self._rows()["abc-123"]["status"], "idle")
-
-    def test_session_end_deletes_row(self):
-        session_state.upsert_from_payload(_payload(prompt="go"), "userPromptSubmitted")
-        session_state.remove_from_payload(_payload(reason="complete"))
-        self.assertEqual(self._rows(), {})
-
-    def test_unknown_event_is_ignored(self):
-        session_state.upsert_from_payload(_payload(), "preToolUse")
+    def test_unknown_event_without_a_file_writes_nothing(self):
+        session_state.apply_event(_payload(), "preToolUse")
         self.assertFalse(session_state.state_file().exists())
 
     # ---- launcher env join -------------------------------------------------
@@ -112,7 +96,7 @@ class SessionStateTests(unittest.TestCase):
     def test_launcher_env_identity_is_persisted(self):
         os.environ["APP_LAUNCHER_SESSION_ID"] = "launcher-42"
         os.environ["APP_LAUNCHER_AGENT"] = "Copilot"
-        session_state.upsert_from_payload(_payload(prompt="go"), "userPromptSubmitted")
+        session_state.apply_event(_payload(prompt="go"), "userPromptSubmitted")
         row = self._rows()["abc-123"]
         self.assertEqual(row["launcher_session_id"], "launcher-42")
         self.assertEqual(row["agent"], "copilot")
@@ -128,7 +112,7 @@ class SessionStateTests(unittest.TestCase):
             json.dumps({"stale-1": {"status": "needs-you", "updated_at": old}}),
             encoding="utf-8",
         )
-        session_state.upsert_from_payload(_payload(prompt="go"), "userPromptSubmitted")
+        session_state.apply_event(_payload(prompt="go"), "userPromptSubmitted")
         rows = self._rows()
         self.assertIn("abc-123", rows)
         self.assertNotIn("stale-1", rows)
@@ -138,8 +122,128 @@ class SessionStateTests(unittest.TestCase):
     def test_corrupt_state_file_self_heals(self):
         session_state.state_file().parent.mkdir(parents=True, exist_ok=True)
         session_state.state_file().write_text("{not json", encoding="utf-8")
-        session_state.upsert_from_payload(_payload(prompt="go"), "userPromptSubmitted")
+        session_state.apply_event(_payload(prompt="go"), "userPromptSubmitted")
         self.assertEqual(self._rows()["abc-123"]["status"], "working")
+
+
+S = session_state.SessionStatus
+TO_WORKING = session_state.Transition(session_state.Effect.WRITE, S.WORKING)
+TO_NEEDS_YOU = session_state.Transition(session_state.Effect.WRITE, S.NEEDS_YOU)
+TO_IDLE = session_state.Transition(session_state.Effect.WRITE, S.IDLE)
+REFRESH = session_state.Transition(session_state.Effect.REFRESH)
+REMOVE = session_state.Transition(session_state.Effect.REMOVE)
+
+# (stored status, event) -> transition; None = the event is ignored.
+TRANSITIONS = {
+    (None, "userPromptSubmitted"): TO_WORKING,
+    (S.IDLE, "userPromptSubmitted"): TO_WORKING,
+    (S.WORKING, "userPromptSubmitted"): TO_WORKING,
+    (S.NEEDS_YOU, "userPromptSubmitted"): TO_WORKING,
+    (None, "agentStop"): TO_NEEDS_YOU,
+    (S.IDLE, "agentStop"): TO_NEEDS_YOU,
+    (S.WORKING, "agentStop"): TO_NEEDS_YOU,
+    (S.NEEDS_YOU, "agentStop"): TO_NEEDS_YOU,
+    (None, "sessionStart"): TO_IDLE,
+    (S.IDLE, "sessionStart"): REFRESH,
+    (S.WORKING, "sessionStart"): REFRESH,  # the late sessionStart of a non-interactive run
+    (S.NEEDS_YOU, "sessionStart"): REFRESH,
+    (None, "sessionEnd"): REMOVE,
+    (S.IDLE, "sessionEnd"): REMOVE,
+    (S.WORKING, "sessionEnd"): REMOVE,
+    (S.NEEDS_YOU, "sessionEnd"): REMOVE,
+    (None, "preToolUse"): None,
+    (S.IDLE, "preToolUse"): None,
+    (S.WORKING, "preToolUse"): None,
+    (S.NEEDS_YOU, "preToolUse"): None,
+}
+
+# (stored status string or None for no row, event) -> status left in the file, or ABSENT.
+ABSENT = "<no row>"
+STORED_OUTCOMES = {
+    **{(old, ev): new for old in (None, "idle", "working", "needs-you", "bogus")
+       for ev, new in (("userPromptSubmitted", "working"), ("agentStop", "needs-you"), ("sessionEnd", ABSENT))},
+    (None, "sessionStart"): "idle",
+    ("idle", "sessionStart"): "idle",
+    ("working", "sessionStart"): "working",
+    ("needs-you", "sessionStart"): "needs-you",
+    ("bogus", "sessionStart"): "idle",  # a status no writer produces is rewritten, not kept
+    (None, "preToolUse"): ABSENT,
+    ("idle", "preToolUse"): "idle",
+    ("working", "preToolUse"): "working",
+    ("needs-you", "preToolUse"): "needs-you",
+    ("bogus", "preToolUse"): "bogus",
+}
+
+
+class SessionStatusMachineTests(unittest.TestCase):
+    """The session-status machine: every (stored status, event) pair has one defined result."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        os.environ["COPILOT_HOOKS_STATE_DIR"] = self._tmp.name
+        os.environ.pop("APP_LAUNCHER_SESSION_ID", None)
+        os.environ.pop("APP_LAUNCHER_AGENT", None)
+
+    def tearDown(self) -> None:
+        os.environ.pop("COPILOT_HOOKS_STATE_DIR", None)
+        self._tmp.cleanup()
+
+    def test_next_transition_table(self):
+        for (existing, event), expected in TRANSITIONS.items():
+            with self.subTest(existing=existing, event=event):
+                self.assertEqual(session_state.next_transition(existing, event), expected)
+
+    def test_next_transition_table_is_complete(self):
+        events = {"userPromptSubmitted", "agentStop", "sessionStart", "sessionEnd", "preToolUse"}
+        self.assertEqual(set(TRANSITIONS), {(s, e) for s in (None, *S) for e in events})
+
+    def test_every_pair_leaves_the_expected_row(self):
+        state_file = session_state.state_file()
+        for (stored, event), expected in STORED_OUTCOMES.items():
+            with self.subTest(stored=stored, event=event):
+                state_file.parent.mkdir(parents=True, exist_ok=True)
+                seed = {} if stored is None else {
+                    "abc-123": {"status": stored, "cwd": "seed", "updated_at": "2099-01-01T00:00:00Z"}
+                }
+                state_file.write_text(json.dumps(seed), encoding="utf-8")
+                session_state.apply_event(_payload(), event)
+                rows = json.loads(state_file.read_text(encoding="utf-8"))
+                got = rows["abc-123"]["status"] if "abc-123" in rows else ABSENT
+                self.assertEqual(got, expected)
+
+    def test_session_start_refresh_keeps_the_row(self):
+        # state-machine-proof: session-status
+        # A late sessionStart is an illegal downgrade: it refreshes the heartbeat
+        # and leaves status, cwd and transcript exactly as they were.
+        session_state.apply_event(
+            _payload(transcriptPath="C:\\t\\events.jsonl", cwd="C:\\work\\first"), "agentStop"
+        )
+        before = self._row()
+        session_state.apply_event(_payload(cwd="C:\\work\\second", source="new"), "sessionStart")
+        after = self._row()
+        self.assertEqual({k: v for k, v in after.items() if k != "updated_at"},
+                         {k: v for k, v in before.items() if k != "updated_at"})
+
+    def test_unknown_status_is_not_a_session_status(self):
+        # state-machine-proof: session-status
+        # The set is closed: a status outside it cannot be constructed, and an
+        # event the machine does not know is ignored rather than guessed at.
+        with self.assertRaises(ValueError):
+            S("stale")
+        self.assertIsNone(session_state.next_transition(S.WORKING, "toolCallFinished"))
+
+    def test_wire_values_are_the_board_strings(self):
+        self.assertEqual({s.value for s in S}, {"idle", "working", "needs-you"})
+
+    def test_unrecognised_status_never_crashes_the_hook(self):
+        state_file = session_state.state_file()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        state_file.write_text(json.dumps({"abc-123": {"status": 7}, "x": None}), encoding="utf-8")
+        for event in ("sessionStart", "userPromptSubmitted", "agentStop", "sessionEnd", "preToolUse"):
+            session_state.apply_event(_payload(), event)
+
+    def _row(self):
+        return json.loads(session_state.state_file().read_text(encoding="utf-8"))["abc-123"]
 
 
 class HookCommandUtf8Tests(unittest.TestCase):

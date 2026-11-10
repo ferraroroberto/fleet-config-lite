@@ -8,7 +8,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 
 | Path | Role |
 |---|---|
-| `hooks/session_state.py` | **Sole writer** of `sessions-state.json` — one row per live Copilot session (`working` / `needs-you` / `idle`), consumed read-only by app-launcher-lite's Board |
+| `hooks/session_state.py` | **Sole writer** of `sessions-state.json` — one row per live Copilot session (`working` / `needs-you` / `idle`), consumed read-only by app-launcher-lite's Board; the status machine is declared in [`docs/session-state.md`](docs/session-state.md) |
 | `hooks/_lib.py` | Payload helpers: camelCase→snake_case normalization, stdin JSON, cwd resolution |
 | `hook-config/session-state.template.json` | Copilot CLI hook definition (rendered with absolute paths by the installer) |
 | `skills/issue-{add,start,finish,yolo}/` | Lite GitLab (`glab`) issue-workflow skills, discovered by Copilot from `~/.copilot/skills/` |
@@ -102,6 +102,8 @@ Copilot CLI fires native hooks (user scope: `~/.copilot/hooks/*.json`). The payl
 - `agentStop` → row status `needs-you` (also records `transcriptPath`)
 - `sessionEnd` → row deleted (hard kills age out via a 24 h prune)
 - `sessionStart` → creates an `idle` row but **never downgrades** an existing one (in `-p` mode it fires *after* `userPromptSubmitted`)
+
+These rules live in one function, `next_transition`; [`docs/session-state.md`](docs/session-state.md) has the state table and how to add a status or event.
 
 State file: `%USERPROFILE%\.copilot\hooks\state\sessions-state.json`. App Launcher Lite reads it there by default. Sessions launched from App Launcher Lite inherit `APP_LAUNCHER_SESSION_ID` / `APP_LAUNCHER_AGENT`, which the writer persists for an exact join; external sessions fall back to a cwd match.
 

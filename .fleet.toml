@@ -148,3 +148,11 @@ baseline = ".docs-ratchet-baseline.json"
 [comment_ratchet]
 enabled  = true
 baseline = ".comment-ratchet-baseline.json"
+
+# [[state_machines]] -- the session status the Board shows. hooks/session_state.py owns the
+# SessionStatus type and the next_transition function; docs/session-state.md has the table.
+[[state_machines]]
+name   = "session-status"
+module = "hooks/session_state.py"
+type   = "SessionStatus"
+derive = "next_transition"

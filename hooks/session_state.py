@@ -9,17 +9,8 @@ this module is the only writer.
 
 Copilot CLI payloads carry no event-name field, so the hook config
 (``hook-config/session-state.template.json``) passes the event name as
-``argv[1]``:
-
-* ``userPromptSubmitted`` → status ``working`` (you handed Copilot the turn).
-* ``agentStop``           → status ``needs-you`` (Copilot finished a turn).
-* ``sessionEnd``          → **deletes** the row (fires on clean exit only; a
-  hard kill never fires it, so those rows age out via the 24h prune).
-* ``sessionStart``        → upserts ``idle``, **but never downgrades an
-  existing row**: in non-interactive runs Copilot fires ``sessionStart``
-  *after* ``userPromptSubmitted`` (verified live, CLI 1.0.70), so an
-  unconditional write would silently flip a correct ``working`` row back to
-  ``idle``.
+``argv[1]``. What each event does to a row is declared once, in
+:func:`next_transition`; ``docs/session-state.md`` holds the state table.
 
 The payload's ``session_id`` is Copilot's session UUID (the same id
 ``copilot --resume=<id>`` accepts). App Launcher Lite injects its exact
@@ -40,7 +31,9 @@ import os
 import sys
 import tempfile
 import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -52,16 +45,58 @@ STATE_FILENAME = "sessions-state.json"
 _PRUNE_AFTER = timedelta(hours=24)
 _REPLACE_ATTEMPTS = 3  # os.replace can hit a transient PermissionError under a concurrent Windows reader
 
-# argv[1] event name → the Board status it evidences. Anything else is ignored.
-_EVENT_STATUS = {
-    "userPromptSubmitted": "working",
-    "agentStop": "needs-you",
-    "sessionStart": "idle",
-}
 
-# sessionStart may arrive after userPromptSubmitted (see module docstring);
-# it only ever fills a hole, never overwrites a real status.
-_NO_OVERWRITE_EVENTS = {"sessionStart"}
+class SessionStatus(str, Enum):
+    """What the Board shows for one session row. The set is closed: a new status is a new member."""
+
+    IDLE = "idle"  # started, no turn handed over yet
+    WORKING = "working"  # the user handed over a turn and the agent has not stopped
+    NEEDS_YOU = "needs-you"  # the agent finished a turn and waits for the user
+
+
+class Effect(Enum):
+    """What an event does to the session's row."""
+
+    WRITE = "write"  # (re)write the whole row with the transition's status
+    REFRESH = "refresh"  # keep the row as it is and only bump ``updated_at``
+    REMOVE = "remove"  # delete the row
+
+
+@dataclass(frozen=True)
+class Transition:
+    effect: Effect
+    status: Optional[SessionStatus] = None  # set exactly when ``effect`` is WRITE
+
+
+def next_transition(existing: Optional[SessionStatus], event: str) -> Optional[Transition]:
+    """The only place an event is mapped to a row change; ``None`` ignores the event.
+
+    ``existing`` is the row's current status, or ``None`` when there is no row or
+    its stored status is not a ``SessionStatus``. ``sessionStart`` may arrive
+    after ``userPromptSubmitted`` (non-interactive runs, verified live on CLI
+    1.0.70), so it only fills a missing row and never downgrades a real status.
+    """
+    if event == "userPromptSubmitted":
+        return Transition(Effect.WRITE, SessionStatus.WORKING)
+    if event == "agentStop":
+        return Transition(Effect.WRITE, SessionStatus.NEEDS_YOU)
+    if event == "sessionStart":
+        if existing is None:
+            return Transition(Effect.WRITE, SessionStatus.IDLE)
+        return Transition(Effect.REFRESH)
+    if event == "sessionEnd":
+        return Transition(Effect.REMOVE)
+    return None
+
+
+def _stored_status(row: Any) -> Optional[SessionStatus]:
+    """The row's status, or ``None`` for a missing row or a status no writer produces."""
+    if not isinstance(row, dict):
+        return None
+    try:
+        return SessionStatus(row.get("status"))
+    except ValueError:
+        return None
 
 
 def state_file() -> Path:
@@ -121,48 +156,61 @@ def _write_rows(path: Path, rows: Dict[str, Any]) -> None:
             time.sleep(0.05 * (attempt + 1))
 
 
-def upsert_from_payload(payload: Dict[str, Any], event: str) -> None:
-    """Write/refresh one session row straight from a hook payload.
+def _new_row(payload: Dict[str, Any], status: SessionStatus, existing: Any) -> Dict[str, Any]:
+    cwd_path = _lib.cwd(payload)
+    transcript = payload.get("transcript_path")
+    # Keep a transcript_path learned on a previous event (only agentStop
+    # carries one) instead of erasing it on the next prompt.
+    if not (isinstance(transcript, str) and transcript) and isinstance(existing, dict):
+        transcript = existing.get("transcript_path")
+    return {
+        "project": cwd_path.name,
+        "status": status.value,
+        "transcript_path": transcript if isinstance(transcript, str) and transcript else None,
+        "cwd": str(cwd_path),
+        "name": None,
+        "name_source": None,
+        "agent": (
+            os.environ.get("APP_LAUNCHER_AGENT", "").strip().lower() or "copilot"
+        ),
+        "launcher_session_id": (
+            os.environ.get("APP_LAUNCHER_SESSION_ID", "").strip() or None
+        ),
+        "updated_at": _isoformat(_now()),
+    }
 
-    Silent no-op without a ``session_id`` or for an unmapped event.
+
+def apply_event(payload: Dict[str, Any], event: str) -> None:
+    """Apply one hook event to the payload's session row.
+
+    Silent no-op without a ``session_id``, for an unmapped event, or for a
+    ``sessionEnd`` whose row is already gone.
     """
-    status = _EVENT_STATUS.get(event)
     session_id = payload.get("session_id")
-    if not status or not isinstance(session_id, str) or not session_id:
+    if not isinstance(session_id, str) or not session_id:
         return
 
     path = state_file()
-    path.parent.mkdir(parents=True, exist_ok=True)
     rows = _read_rows(path)
+    existing = rows.get(session_id)
+    transition = next_transition(_stored_status(existing), event)
+    if transition is None:
+        return
 
-    existing = rows.get(str(session_id))
-    if event in _NO_OVERWRITE_EVENTS and isinstance(existing, dict):
+    if transition.effect is Effect.REMOVE:
+        if session_id in rows:
+            del rows[session_id]
+            _write_rows(path, rows)
+        return
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if transition.effect is Effect.REFRESH:
         # Refresh the heartbeat only; keep the stronger status.
         row = dict(existing)
         row["updated_at"] = _isoformat(_now())
-        rows[str(session_id)] = row
-    else:
-        cwd_path = _lib.cwd(payload)
-        transcript = payload.get("transcript_path")
-        # Keep a transcript_path learned on a previous event (only agentStop
-        # carries one) instead of erasing it on the next prompt.
-        if not (isinstance(transcript, str) and transcript) and isinstance(existing, dict):
-            transcript = existing.get("transcript_path")
-        rows[str(session_id)] = {
-            "project": cwd_path.name,
-            "status": status,
-            "transcript_path": transcript if isinstance(transcript, str) and transcript else None,
-            "cwd": str(cwd_path),
-            "name": None,
-            "name_source": None,
-            "agent": (
-                os.environ.get("APP_LAUNCHER_AGENT", "").strip().lower() or "copilot"
-            ),
-            "launcher_session_id": (
-                os.environ.get("APP_LAUNCHER_SESSION_ID", "").strip() or None
-            ),
-            "updated_at": _isoformat(_now()),
-        }
+        rows[session_id] = row
+    elif transition.status is not None:
+        rows[session_id] = _new_row(payload, transition.status, existing)
 
     cutoff = _now() - _PRUNE_AFTER
     kept: Dict[str, Any] = {}
@@ -174,29 +222,10 @@ def upsert_from_payload(payload: Dict[str, Any], event: str) -> None:
     _write_rows(path, kept)
 
 
-def remove_from_payload(payload: Dict[str, Any]) -> None:
-    """Delete the payload's session row (sessionEnd); silent no-op if absent."""
-    session_id = payload.get("session_id")
-    if not isinstance(session_id, str) or not session_id:
-        return
-    path = state_file()
-    if not path.exists():
-        return
-    rows = _read_rows(path)
-    if str(session_id) not in rows:
-        return
-    del rows[str(session_id)]
-    _write_rows(path, rows)
-
-
 def main() -> None:
     try:
         event = sys.argv[1] if len(sys.argv) > 1 else ""
-        payload = _lib.read_stdin_json()
-        if event == "sessionEnd":
-            remove_from_payload(payload)
-        else:
-            upsert_from_payload(payload, event)
+        apply_event(_lib.read_stdin_json(), event)
     except Exception:  # noqa: BLE001 — state is advisory; never disturb the session
         pass
     _lib.allow()

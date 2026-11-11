@@ -34,7 +34,7 @@ class Declaration(unittest.TestCase):
         # this repo has none.
         self.assertEqual(
             set(table["rules"]),
-            {"no-window", "logging-not-print", "no-drive-path", "state-literal", "state-set-repeat", "state-write"},
+            {"no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "state-literal", "state-set-repeat", "state-write"},
         )
         self.assertNotIn("secret_helpers", table)
         self.assertNotIn("git_wrappers", table)

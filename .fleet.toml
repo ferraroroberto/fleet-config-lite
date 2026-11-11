@@ -105,7 +105,8 @@ baseline = ".dead-code-ratchet-baseline.json"
 # when a file's count for an enabled rule rises above its entry in
 # .conventions-ratchet-baseline.json. Enabled: no-window (hooks and skills spawn on
 # Windows), logging-not-print (hooks/ and skills/ hold the library code) and
-# no-drive-path (nothing here may name a machine's drive). secret-compare and git-wrapper
+# no-drive-path (nothing here may name a machine's drive), subprocess-timeout (every
+# subprocess.run/call/check_* passes timeout=). secret-compare and git-wrapper
 # stay off because the repo has no secret-compare or git helper. There is no [e2e]
 # router table, so the baseline file needs no tier rule. Existing hits are baselined,
 # never excluded. Exit 3 (git unusable, a .py file that does not parse) fails the run
@@ -113,7 +114,7 @@ baseline = ".dead-code-ratchet-baseline.json"
 [conventions_ratchet]
 enabled     = true
 baseline    = ".conventions-ratchet-baseline.json"
-rules       = ["no-window", "logging-not-print", "no-drive-path", "state-literal", "state-set-repeat", "state-write"]
+rules       = ["no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "state-literal", "state-set-repeat", "state-write"]
 print_paths = ["hooks/", "skills/"]
 
 # [runtime_write_ratchet] -- scripts/runtime_write_ratchet.py fails when a tracked

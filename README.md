@@ -129,7 +129,7 @@ Nine vendored baseline-and-ratchet quality gates run inside `python -m unittest 
 | instruction | a `SKILL.md` (or a doc it links) gaining a prompt-audit rule hit, or passing a size cap | `[instruction_ratchet]` |
 | doc-refs | a dangling repo path, `python -m` module, or relative link in `README.md`/`docs/**/*.md` | `[doc_refs_ratchet]` |
 | dead-code | a Python function, class or method nothing else in the tree references | `[dead_code_ratchet]` |
-| conventions | a rising count for an enabled fleet-convention `ast` rule (`no-window`, `logging-not-print`, `no-drive-path`) | `[conventions_ratchet]` |
+| conventions | a rising count for an enabled fleet-convention `ast` rule (`no-window`, `logging-not-print`, `no-drive-path`, `subprocess-timeout`) | `[conventions_ratchet]` |
 | docs | `README.md` over 40 KiB, or a new history marker (issue reference, dated heading, changelog heading) | `[docs_ratchet]` |
 | comment | a new issue reference inside a code comment | `[comment_ratchet]` |
 | runtime write | a Python write target resolving under a code folder (`hooks/`, `skills/`, `scripts/`) beyond the baseline; a new target it cannot resolve is NOT CONFIRMED | `[runtime_write_ratchet]` |

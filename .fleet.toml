@@ -67,6 +67,11 @@ baseline = ".structure-ratchet-baseline.json"
 enabled    = true
 baseline   = ".instruction-ratchet-baseline.json"
 skill_dirs = ["skills"]
+# `agents_pointer` stays off: it requires an AGENTS.md pointing at a CLAUDE.md, and this repo
+# has neither (the Copilot instructions are global-instructions.md).
+ci_expectations     = true
+claude_md_max_lines = 120
+repeated_text_words = 12
 
 # [doc_refs_ratchet] -- the scaffold's baseline-and-ratchet lint over documentation
 # references. The unit run (python -m unittest discover -s tests) includes
@@ -74,14 +79,12 @@ skill_dirs = ["skills"]
 # README.md or docs/**/*.md names a repo path, `python -m` module or relative link that
 # does not exist, beyond .doc-refs-ratchet-baseline.json. This repo declares no `port`,
 # so ports are not checked, and it has no CLAUDE.md. Existing dangling references are
-# baselined, never excluded; `allow_refs` lists the one intentional pointer, the
-# shared-helper folder docs/layout.md says the first shared helper creates. Exit 3 (git
+# baselined, never excluded. Exit 3 (git
 # unusable, a file that is not UTF-8, an unclosed fence) fails the run as NOT CONFIRMED.
 # Procedure: project-scaffolding docs/doc-refs-ratchet.md.
 [doc_refs_ratchet]
 enabled    = true
 baseline   = ".doc-refs-ratchet-baseline.json"
-allow_refs = ["skills/_lib"]
 
 # [dead_code_ratchet] -- the scaffold's baseline-and-ratchet lint for definitions nothing
 # references. The unit run (python -m unittest discover -s tests) includes
@@ -150,6 +153,8 @@ baseline = ".docs-ratchet-baseline.json"
 [comment_ratchet]
 enabled  = true
 baseline = ".comment-ratchet-baseline.json"
+docstrings      = true
+history_phrases = true
 
 # [[state_machines]] -- the session status the Board shows. hooks/session_state.py owns the
 # SessionStatus type and the next_transition function; docs/session-state.md has the table.

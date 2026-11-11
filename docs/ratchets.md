@@ -34,13 +34,13 @@ Shape is `skills-governance`; where new code goes:
 ## instruction
 
 Configured with `skill_dirs = ["skills"]`; this repo has no `CLAUDE.md` or
-`AGENTS.md` to scan.
+`AGENTS.md` to scan. `ci_expectations`, `claude_md_max_lines = 120` and
+`repeated_text_words = 12` are on, at zero. `agents_pointer` is off: it needs an
+`AGENTS.md` pointing at a `CLAUDE.md`, and this repo has neither.
 
 ## doc-refs
 
-No `port` is declared, so ports are not checked. `allow_refs` lists one
-intentional pointer — the shared-helper folder `layout.md` says the first
-shared helper creates.
+No `port` is declared, so ports are not checked.
 
 ## dead-code
 
@@ -65,12 +65,16 @@ needs no `tier` rule.
 ## comment
 
 Every vendored destination is excluded automatically, since the ratchet only
-scans tracked, non-vendored files.
+scans tracked, non-vendored files. `docstrings` and `history_phrases` are on, at
+zero, so a docstring states the present-tense why too.
 
 ## runtime write
 
 Vendored with its sibling `scripts/runtime_write_resolve.py`, which the script
-imports. The default code folders apply. The baseline records today's 10 write
-targets the static resolver cannot place (`unresolved`) and no code-folder hit.
+imports. The default code folders apply. The baseline is empty and no `# runtime-write-exempt` marker sits
+outside the vendored scripts and the two in the guarded writer. A destination a caller names
+(a deck dir, `--out-dir`, the repo an e2e bootstrap targets) is written through
+`skills/_lib/runtime_files.py`, which raises when the resolved path is under a code folder, so the
+guarantee is checked at runtime instead of claimed per call.
 The script's `--snapshot`/`--probe` pair is not wired: the tests are the gate
 run itself, so there is no stage outside them to bracket.

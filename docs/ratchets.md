@@ -53,7 +53,10 @@ scripts are plain functions called by name, so no `allow` or
 
 Enabled rules: `no-window` (hooks and skills spawn processes on Windows),
 `logging-not-print` (scoped to `hooks/` and `skills/`, the library code) and
-`no-drive-path` (nothing here may name a machine's drive). `secret-compare`
+`no-drive-path` (nothing here may name a machine's drive) and
+`subprocess-timeout` (a `subprocess.run/call/check_call/check_output` passes
+`timeout=`, or carries a `# subprocess-timeout-exempt: <reason>` marker for a
+child that is meant to run unbounded). `secret-compare`
 and `git-wrapper` stay off — the repo has no secret-compare or git helper for
 them to route through. There is no `[e2e]` router table, so the baseline file
 needs no `tier` rule.

@@ -28,6 +28,9 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+from runtime_files import checked, save_text  # noqa: E402
+
 if sys.platform == "win32":  # emoji-safe output under piped/redirected capture
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -119,12 +122,15 @@ def propagate(source: Path, deck_dir: Optional[Path] = None) -> int:
     # Validate-then-write: compute every new content first, only then touch disk.
     rewritten: List[tuple[Path, str]] = []
     for target in targets:
+        try:
+            checked(target)
+        except ValueError as exc:
+            raise SystemExit(f"❌ {exc}") from exc
         new_text = stamp(target.read_text(encoding="utf-8"), blocks, target.name)
         rewritten.append((target, new_text))
 
     for target, new_text in rewritten:
-        # runtime-write-exempt: stamping the caller's deck files in place is the command's purpose
-        target.write_text(new_text, encoding="utf-8", newline="")
+        save_text(target, new_text, newline="")
         log.info("✅ stamped %s", target.name)
     log.info("✅ propagated %d block(s) into %d file(s).", len(blocks), len(rewritten))
     return len(rewritten)

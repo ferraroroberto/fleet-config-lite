@@ -20,6 +20,7 @@ docs/layout.md                   this file
 - `hooks/` — `session_state.py` (sole writer of the sessions state file) and `_lib.py` (payload helpers).
 - `hook-config/` — `session-state.template.json`, the hook definition rendered with absolute paths.
 - `skills/issue-add`, `issue-start`, `issue-finish`, `issue-yolo`, `quick` — issue-workflow skills, `SKILL.md` only.
+- `skills/_lib/` — `runtime_files.py`, the guarded writer the e2e, learning-log and slides scripts share.
 - `skills/e2e/` — `SKILL.md`, `e2e_route.py` and the vendored `classify_e2e.py`.
 - `skills/codebase-audit/` — `SKILL.md` and `audit_gate.py`; `audit-fleet` and `cleanup-fleet` are `SKILL.md` only.
 - `skills/learning-log/` — `SKILL.md` and `gather.py`.
@@ -29,7 +30,7 @@ docs/layout.md                   this file
 
 ## Where new code goes
 
-- A helper used by one skill stays in that skill's folder. At its second caller it moves to `skills/_lib/`, which does not exist yet and is created by the first shared helper.
+- A helper used by one skill stays in that skill's folder. At its second caller it moves to `skills/_lib/`. A script reaches it through its real (resolved) path, so the junction layout of `~/.copilot/skills/` does not matter.
 - A script that a `SKILL.md` invokes by path keeps that path.
 - A new test goes in `tests/` as `test_<module>.py`. Once `tests/` nears 40 modules, new tests go in a subfolder that mirrors the code under test.
 

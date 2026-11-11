@@ -1,4 +1,4 @@
-"""Deterministic half of the lite `/prompt-audit` (port of fleet-config#831 / #834).
+"""Deterministic half of the lite `/prompt-audit` (a port of the full fleet-config prompt-audit).
 
 The skill checks instruction files (CLAUDE.md, AGENTS.md, copilot-instructions.md,
 global-instructions.md, .claude/rules/*.md, SKILL.md) against the vendors' current

@@ -17,7 +17,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `skills/learning-log/` | Host-agnostic (GitHub or GitLab) learning log + productivity stats from this repo's sibling-repo work stream: `SKILL.md` + self-contained `gather.py` — see "The /learning-log skill" below |
 | `skills/codebase-audit/`, `skills/audit-fleet/`, `skills/cleanup-fleet/` | Gated, credit-bounded resting-state quality audit: `SKILL.md` + self-contained `audit_gate.py` (significance gate, ledger, managed-issue upsert; `gh` or `glab`), a sequential fleet loop, and a one-repo-per-run fix loop — see "The audit skills" below |
 | `skills/prompt-audit/` | Capped audit of instruction files (at most 2 repos per run, this repo and its siblings) against the vendors' current prompting guides: `SKILL.md` + byte-identical `rules.md`/`sources.toml` + self-contained `audit.py` and its sibling `audit_lint.py` (freshness gate, lint, skip-unchanged ledger, digest; `gh` or `glab`) — see "The /prompt-audit skill" below |
-| `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported byte-for-byte in its `assets/`+`scripts/` from the private life-os repo |
+| `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported from the private life-os repo (`assets/` byte-for-byte; the scripts differ only in writing through `skills/_lib/runtime_files.py`) |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
 | `scripts/*_ratchet.py`, `.*-ratchet-baseline.json` | Nine vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment, runtime write), test-time only — see "The ratchets" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
@@ -134,7 +134,7 @@ Nine vendored baseline-and-ratchet quality gates run inside `python -m unittest 
 | comment | a new issue reference inside a code comment | `[comment_ratchet]` |
 | runtime write | a Python write target resolving under a code folder (`hooks/`, `skills/`, `scripts/`) beyond the baseline; a new target it cannot resolve is NOT CONFIRMED | `[runtime_write_ratchet]` |
 
-Per-ratchet specifics that don't fit the table — the static ratchet's extra prerequisites (ruff + Node's `npx` for `jscpd`), the intentional duplicate carved out of `audit_gate.py`, `doc_refs_ratchet`'s `allow_refs`, and the rest — live in [docs/ratchets.md](docs/ratchets.md).
+Per-ratchet specifics that don't fit the table — the static ratchet's extra prerequisites (ruff + Node's `npx` for `jscpd`), the intentional duplicate carved out of `audit_gate.py`, the guarded writer behind the runtime-write ratchet, and the rest — live in [docs/ratchets.md](docs/ratchets.md).
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 

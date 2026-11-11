@@ -1,6 +1,6 @@
 """Deterministic front-end for the lite `/e2e` skill.
 
-Downscaled from `fleet-config`'s `skills/_lib/e2e_route.py` (fleet-config#556)
+A downscaled form of `fleet-config`'s `skills/_lib/e2e_route.py`
 with one deliberate difference: this copy is **fully self-contained**. The
 self-healing bootstrap sources the `classify_e2e.py` **bundled next to this
 script** — never an external checkout — so the whole `skills/e2e/` folder
@@ -35,6 +35,9 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
+from runtime_files import make_dirs, save_bytes  # noqa: E402
 
 BUNDLED_CLASSIFIER = Path(__file__).resolve().parent / "classify_e2e.py"
 CLASSIFIER_REL = Path("scripts/classify_e2e.py")
@@ -192,10 +195,12 @@ def cmd_bootstrap(repo: Path, source: Path, force: bool) -> int:
             print("BOOTSTRAP=refused REASON=existing classifier differs from the bundled "
                   "one (custom implementation - migrate deliberately with --force)")
             return 1
-    # runtime-write-exempt: the destination is a repo the caller named, never this checkout
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    # runtime-write-exempt: the destination is a repo the caller named, never this checkout
-    dest.write_bytes(source.read_bytes())
+    try:
+        make_dirs(dest.parent)
+        save_bytes(dest, source.read_bytes())
+    except ValueError as exc:
+        print(f"BOOTSTRAP=refused REASON={exc}")
+        return 1
     if not files_identical(source, dest):
         print("BOOTSTRAP=error REASON=post-copy verification failed (bytes differ)")
         return 1

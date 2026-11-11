@@ -28,6 +28,9 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+from runtime_files import save_text  # noqa: E402
+
 if sys.platform == "win32":  # emoji-safe output under piped/redirected capture
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -143,12 +146,10 @@ def make_print(
     first_title = TITLE_RE.search(slides[0].read_text(encoding="utf-8"))
     deck_title = first_title.group(1).split("·")[0].strip() if first_title else deck_dir.name
     out = deck_dir / out_name
-    # runtime-write-exempt: print.html is the deliverable, written into the deck dir the caller named
-    out.write_text(
-        PAGE_SHELL.format(title=f"{deck_title} · print", pages=pages),
-        encoding="utf-8",
-        newline="",
-    )
+    try:
+        save_text(out, PAGE_SHELL.format(title=f"{deck_title} · print", pages=pages), newline="")
+    except ValueError as exc:
+        raise SystemExit(f"❌ {exc}") from exc
     log.info("✅ wrote %s (%d slide page(s)).", out, len(slides))
 
     if pdf is not None:

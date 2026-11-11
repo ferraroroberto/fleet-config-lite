@@ -70,8 +70,8 @@ def read_stdin_json() -> Dict[str, Any]:
     (``& python session_state.py <event>``): a native command started without
     pipeline input inherits PowerShell's raw stdin, so Copilot's UTF-8 bytes
     arrive untouched in Windows PowerShell 5.1 and pwsh 7 alike. The old
-    ``[Console]::In.ReadToEnd() | python`` pipe decoded them with the console
-    OEM code page first, garbling any non-ASCII text (fleet-config-lite#24).
+    ``[Console]::In.ReadToEnd() | python`` pipe would decode them with the console
+    OEM code page first, garbling any non-ASCII text.
     The bytes are decoded as UTF-8 here, independent of the locale default.
     """
     try:

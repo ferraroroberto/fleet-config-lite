@@ -58,6 +58,21 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
+from issue_host import (  # noqa: E402
+    cli_for,
+    comment_args,
+    create_issue_args,
+    created_issue_url,
+    detect_host,
+    edit_issue_args,
+    label_create_args,
+    list_issues_args,
+    normalise_issues,
+    parse_owner_repo,
+    split_owner_repo,
+    url_from_view,
+    view_url_args,
+)
 from runtime_files import make_dirs, save_text  # noqa: E402
 
 try:
@@ -106,35 +121,6 @@ _LABEL_BUCKET = {
 
 
 # ---- pure helpers (unit-tested without gh/glab) ----------------------------
-
-def parse_owner_repo(remote_url: str) -> tuple[str, str]:
-    """(owner_or_group, repo_name) from an https:// or git@ remote URL.
-
-    Supports GitLab subgroups (owner may contain '/'), e.g.
-    'https://gitlab.example.com/group/subgroup/project.git' ->
-    ('group/subgroup', 'project').
-    """
-    u = (remote_url or "").strip()
-    u = re.sub(r"\.git$", "", u)
-    if not u:
-        return "", ""
-    if u.startswith("git@") or (":" in u and "://" not in u):
-        _, _, rest = u.partition("@") if "@" in u else ("", "", u)
-        host_and_path = rest or u
-        _, _, path = host_and_path.partition(":")
-    else:
-        m = re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/]+/(.+)$", u)
-        path = m.group(1) if m else ""
-    parts = [p for p in path.strip("/").split("/") if p]
-    if len(parts) < 2:
-        return "", ""
-    return "/".join(parts[:-1]), parts[-1]
-
-
-def detect_host(remote_url: str) -> str:
-    """'github' if the remote is github.com, else 'gitlab' (gitlab.com or self-hosted)."""
-    return "github" if "github.com" in (remote_url or "") else "gitlab"
-
 
 def parse_last_run(body: str) -> str | None:
     m = re.search(r"last-run-at:\s*(\d{4}-\d{2}-\d{2})", body or "")
@@ -334,10 +320,9 @@ def git_remote_url(remote: str = "origin") -> str:
 def resolve_repo_context() -> tuple[str, str, str, str]:
     """(host, owner, repo, repo_full) for the current checkout's origin remote."""
     url = git_remote_url()
-    host = detect_host(url)
-    owner, repo = parse_owner_repo(url)
-    repo_full = f"{owner}/{repo}" if owner and repo else ""
-    return host, owner, repo, repo_full
+    repo_full = parse_owner_repo(url)
+    owner, repo = split_owner_repo(repo_full)
+    return detect_host(url), owner, repo, repo_full
 
 
 def list_sibling_repos(host: str, owner: str) -> list[str]:
@@ -395,82 +380,45 @@ def gather_repo(host: str, owner: str, repo: str, since: str) -> tuple[list[dict
 
 
 def ensure_ledger_label(host: str, repo_full: str) -> None:
-    if host == "github":
-        existing = _cli_json("gh", ["label", "list", "--repo", repo_full, "--json", "name", "--limit", "200"])
-        names = {l.get("name") for l in existing} if isinstance(existing, list) else set()
-        if LEDGER_LABEL not in names:
-            _run(["gh", "label", "create", LEDGER_LABEL, "--repo", repo_full,
-                 "--color", "0e8a16", "--description", "learning-log ledger (machine-managed)"])
-    else:
-        # glab: best-effort per documented CLI shape, not live-tested.
-        _run(["glab", "label", "create", LEDGER_LABEL, "--repo", repo_full,
-             "--color", "#0e8a16", "--description", "learning-log ledger (machine-managed)"])
+    # An already-existing label makes the create fail, which is fine: the exit code is not read.
+    _run([cli_for(host), *label_create_args(host, repo_full, LEDGER_LABEL, color="0e8a16",
+                                            description="learning-log ledger (machine-managed)")])
 
 
 def read_ledger(host: str, repo_full: str) -> tuple[int | None, str, str | None]:
     """(issue_number, body, url) of the open ledger issue, or (None, "", None)."""
-    if host == "github":
-        data = _cli_json("gh", ["issue", "list", "--repo", repo_full, "--label", LEDGER_LABEL,
-                                "--state", "open", "--json", "number,body,url", "--limit", "5"])
-    else:
-        data = _cli_json("glab", ["issue", "list", "--repo", repo_full, "--label", LEDGER_LABEL,
-                                  "--state", "opened", "--per-page", "5", "--output", "json"])
-    items = data if isinstance(data, list) else []
+    items = normalise_issues(host, _cli_json(cli_for(host), list_issues_args(host, repo_full, LEDGER_LABEL, state="open")))
     if not items:
         return None, "", None
-    it = items[0]
-    return (it.get("number") or it.get("iid"), it.get("body") or it.get("description") or "",
-            it.get("url") or it.get("web_url"))
+    return items[0]["number"], items[0].get("body") or "", items[0].get("url")
 
 
 def upsert_ledger(host: str, repo_full: str, body: str) -> tuple[int | None, str | None]:
     ensure_ledger_label(host, repo_full)
     number, _prior_body, _url = read_ledger(host, repo_full)
+    cli = cli_for(host)
     with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as f:
         f.write(body)
         body_file = f.name
     try:
         if number:
-            if host == "github":
-                edit = _run(["gh", "issue", "edit", str(number), "--repo", repo_full, "--body-file", body_file])
-                if edit.returncode != 0:
-                    print(f"gh issue edit {number} failed (exit {edit.returncode}): {edit.stderr.strip()[:400]}",
-                          file=sys.stderr)
-                    return None, None
-                proc = _cli_json("gh", ["issue", "view", str(number), "--repo", repo_full, "--json", "url"])
-                url = proc.get("url") if isinstance(proc, dict) else None
-            else:
-                edit = _run(["glab", "issue", "update", str(number), "--repo", repo_full,
-                             "--description-file", body_file])
-                if edit.returncode != 0:
-                    print(f"glab issue update {number} failed (exit {edit.returncode}): {edit.stderr.strip()[:400]}",
-                          file=sys.stderr)
-                    return None, None
-                proc = _cli_json("glab", ["issue", "view", str(number), "--repo", repo_full, "--output", "json"])
-                url = proc.get("web_url") if isinstance(proc, dict) else None
-            return number, url
-        if host == "github":
-            proc = _run(["gh", "issue", "create", "--repo", repo_full, "--title", LEDGER_TITLE,
-                        "--body-file", body_file, "--label", LEDGER_LABEL, "--assignee", "@me"])
-            url = proc.stdout.strip() if proc.returncode == 0 else None
-        else:
-            proc = _run(["glab", "issue", "create", "--repo", repo_full, "--title", LEDGER_TITLE,
-                        "--description-file", body_file, "--label", LEDGER_LABEL, "--assignee", "@me"])
-            url = proc.stdout.strip() if proc.returncode == 0 else None
-        new_number = None
-        if url:
-            m = re.search(r"/(\d+)$", url.splitlines()[-1] if url else "")
-            new_number = int(m.group(1)) if m else None
-        return new_number, (url.splitlines()[-1] if url else None)
+            edit_args = edit_issue_args(host, repo_full, number, LEDGER_TITLE, body_file, LEDGER_LABEL)
+            edit = _run([cli, *edit_args])
+            if edit.returncode != 0:
+                print(f"{cli} issue {edit_args[1]} {number} failed (exit {edit.returncode}): {edit.stderr.strip()[:400]}",
+                      file=sys.stderr)
+                return None, None
+            return number, url_from_view(host, _cli_json(cli, view_url_args(host, repo_full, number)))
+        proc = _run([cli, *create_issue_args(host, repo_full, LEDGER_TITLE, body_file, LEDGER_LABEL)])
+        url = created_issue_url(proc.stdout.strip()) if proc.returncode == 0 else None
+        m = re.search(r"/(\d+)$", url or "")
+        return (int(m.group(1)) if m else None), (url or None)
     finally:
         Path(body_file).unlink(missing_ok=True)
 
 
 def post_comment(host: str, repo_full: str, issue_number: int, body_file: str) -> str | None:
-    if host == "github":
-        proc = _run(["gh", "issue", "comment", str(issue_number), "--repo", repo_full, "--body-file", body_file])
-    else:
-        proc = _run(["glab", "issue", "note", str(issue_number), "--repo", repo_full, "--message-file", body_file])
+    proc = _run([cli_for(host), *comment_args(host, repo_full, issue_number, body_file)])
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 

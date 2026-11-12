@@ -15,13 +15,9 @@ Prerequisites, both on the machine that runs the tests:
 - **Node (`npx`)** for `jscpd`; its first run downloads the pinned release, so
   it needs network once.
 
-One duplicate is intentional and declared in the source instead of the
-baseline: `parse_owner_repo` and `detect_host` in
-`skills/codebase-audit/audit_gate.py` sit between `jscpd:ignore-start` and
-`jscpd:ignore-end` markers (the copy in `skills/prompt-audit/audit.py` stays
-unmarked), because both audit scripts import nothing from `skills/_lib/` or from each
-other, so each runs from its own folder alone; deduplicating would couple
-them. This is a declared exception to the `layout.md` rule that a second
+No duplicate is carved out of the ratchet: the remote-URL, managed-issue marker
+and gh/glab issue helpers the audit and learning-log scripts once copied live
+once in `skills/_lib/issue_host.py`, per the `layout.md` rule that a second
 caller moves a helper to `skills/_lib/`. `scripts/static_ratchet_gate.py` maps the script's exit codes (0
 pass; 1 new finding; 2 bad config; 3 detector could not run). The ratchet
 tests share one assertion, `assert_ratchet_passes` in

@@ -7,10 +7,10 @@ every exact step -- hashing fetched guides against their baselines, enumerating 
 scan surface, counting lint hits, the skip-unchanged ledger, and the digest -- so no
 number is ever invented by a model. It never fetches a page and never edits a file.
 
-Self-contained on purpose (the fleet-config-lite contract): stdlib only, no import
-from any `_lib`, host detected from `git remote get-url origin` (`gh` or `glab`).
-The helpers are a deliberate near-duplicate of fleet-config's
-`.claude/skills/prompt-audit/audit.py`; `rules.md` and `sources.toml` are
+Stdlib only, host detected from `git remote get-url origin` (`gh` or `glab`). The
+remote-URL, marker and issue-argv helpers come from the sibling `skills/_lib/issue_host.py`,
+shared with the other audit helpers. The rest is a deliberate near-duplicate of
+fleet-config's `.claude/skills/prompt-audit/audit.py`; `rules.md` and `sources.toml` are
 byte-identical copies of that repo's files.
 
 Hard caps, enforced here rather than in prose:
@@ -50,7 +50,22 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
 from audit_lint import NEUTRAL, clean, lint_entry, parse_rules, sections
+from issue_host import (  # noqa: E402
+    cli_for,
+    comment_args,
+    create_issue_args,
+    created_issue_url,
+    detect_host,
+    edit_issue_args,
+    ensure_marker,
+    has_marker,
+    label_create_args,
+    list_issues_args,
+    normalise_issues,
+    parse_owner_repo,
+)
 
 NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
@@ -280,22 +295,6 @@ def inventory(repos: Dict[str, Path], audiences: Dict[str, dict], home_name: str
 # ---- ledger ---------------------------------------------------------------------
 
 _ENTRY_RE = re.compile(r"^([^:#\s<][^:]*?):[ \t]*([0-9a-f]{12})[ \t]*$", re.MULTILINE)
-_MARKER_RE = re.compile(r"^[ \t]*<!--[ \t]*audit-managed:[ \t]*kind=([\w-]+)[ \t]*-->[ \t]*$", re.MULTILINE)
-
-
-def marker_for(kind: str) -> str:
-    return f"<!-- audit-managed: kind={kind} -->"
-
-
-def has_marker(body: str, kind: str) -> bool:
-    """True only when the marker is the body's first line (quoting it in prose does not count)."""
-    m = _MARKER_RE.match((body or "").lstrip())
-    return bool(m) and m.group(1) == kind
-
-
-def ensure_marker(body: str, kind: str) -> str:
-    stripped = _MARKER_RE.sub("", body or "").lstrip("\n")
-    return f"{marker_for(kind)}\n\n{stripped}" if stripped else f"{marker_for(kind)}\n"
 
 
 def pick_ledger(issues: List[dict]) -> Tuple[Optional[int], List[int]]:
@@ -554,26 +553,6 @@ def _run(cmd: List[str], cwd: Optional[str] = None, timeout: int = 120) -> subpr
                           errors="replace", timeout=timeout, creationflags=NO_WINDOW)
 
 
-def parse_owner_repo(remote_url: str) -> str:
-    """'owner/repo' (GitLab subgroups keep their slashes) or '' if unparseable."""
-    u = re.sub(r"\.git$", "", (remote_url or "").strip())
-    if "://" in u:
-        m = re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/]+/(.+)$", u)
-        path = m.group(1) if m else ""
-    else:
-        path = u.partition(":")[2]
-    parts = [p for p in path.strip("/").split("/") if p]
-    return "/".join(parts) if len(parts) >= 2 else ""
-
-
-def detect_host(remote_url: str) -> str:
-    return "github" if "github.com" in (remote_url or "") else "gitlab"
-
-
-def cli_for(host: str) -> str:
-    return "gh" if host == "github" else "glab"
-
-
 def resolve_repo(repo_path: Path) -> Tuple[str, str]:
     """(host, owner/repo) from `git remote get-url origin`."""
     try:
@@ -606,21 +585,10 @@ def _write(host: str, args: List[str], dry_run: bool) -> str:
     return _cli(host, args)
 
 
-def list_issues_args(host: str, repo: str, label: str) -> List[str]:
-    if host == "github":
-        return ["issue", "list", "--repo", repo, "--state", "all", "--label", label,
-                "--limit", "300", "--json", "number,title,body,state"]
-    return ["issue", "list", "--repo", repo, "--all", "--label", label, "--per-page", "100", "--output", "json"]
-
-
 def list_issues(host: str, repo: str, label: str) -> List[dict]:
-    """Issues carrying `label`, normalised to {number, title, body, state}."""
+    """Issues carrying `label`, normalised to {number, title, body, state, url}."""
     out = _cli(host, list_issues_args(host, repo, label))
-    data = json.loads(out) if out else []
-    if host == "github":
-        return [{**i, "state": (i.get("state") or "").lower()} for i in data]
-    return [{"number": i.get("iid"), "title": i.get("title", ""), "body": i.get("description") or "",
-             "state": "open" if i.get("state") == "opened" else "closed"} for i in data]
+    return normalise_issues(host, json.loads(out) if out else [])
 
 
 def read_ledger(host: str, repo: str) -> dict:
@@ -641,35 +609,17 @@ def upsert_ledger(host: str, repo: str, number: Optional[int], body: str, dry_ru
     fh = tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8", newline="")
     fh.write(ensure_marker(body, KIND))
     fh.close()
-    label_args = (["label", "create", LEDGER_LABEL, "--repo", repo] if host == "github"
-                  else ["label", "create", "--repo", repo, "-n", LEDGER_LABEL])
     try:
         try:
-            _write(host, label_args, dry_run)
+            _write(host, label_create_args(host, repo, LEDGER_LABEL), dry_run)
         except RuntimeError:
             pass  # the label already exists
-        if host == "github":
-            if number is None:
-                return _write(host, ["issue", "create", "--repo", repo, "--title", TITLE, "--body-file", fh.name,
-                                     "--label", LEDGER_LABEL, "--assignee", "@me"], dry_run)
-            _write(host, ["issue", "edit", str(number), "--repo", repo, "--title", TITLE, "--body-file", fh.name,
-                          "--add-label", LEDGER_LABEL], dry_run)
-            return f"#{number}"
         if number is None:
-            out = _write(host, ["issue", "create", "--repo", repo, "--title", TITLE, "--description-file", fh.name,
-                                "--label", LEDGER_LABEL, "--assignee", "@me", "--yes"], dry_run)
-            return out.splitlines()[-1] if out else ""
-        _write(host, ["issue", "update", str(number), "--repo", repo, "--title", TITLE,
-                      "--description-file", fh.name, "--label", LEDGER_LABEL], dry_run)
+            return created_issue_url(_write(host, create_issue_args(host, repo, TITLE, fh.name, LEDGER_LABEL), dry_run))
+        _write(host, edit_issue_args(host, repo, number, TITLE, fh.name, LEDGER_LABEL), dry_run)
         return f"#{number}"
     finally:
         os.unlink(fh.name)
-
-
-def comment_args(host: str, repo: str, number: int, body_file: str) -> List[str]:
-    if host == "github":
-        return ["issue", "comment", str(number), "--repo", repo, "--body-file", body_file]
-    return ["issue", "note", str(number), "--repo", repo, "--message-file", body_file]
 
 
 # ---- subcommands ----------------------------------------------------------------

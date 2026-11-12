@@ -15,7 +15,9 @@ Downscaled from the private `fleet-config` skill for a limited-credit
 environment: four buckets instead of seven, a hard cap on findings per run,
 no security self-heal, no Slack, no schedulers. The one deterministic piece
 is vendored beside this file: `audit_gate.py` (stdlib only, `gh` or `glab`
-picked from the repo's `origin`). Run it from **this skill's base directory**
+picked from the repo's `origin`), which imports the sibling `skills/_lib/`
+(`issue_host.py`: remote-URL parsing, the managed-issue marker and the gh/glab
+issue commands). Run it from **this skill's base directory**
 with Python ≥3.11; the GitLab path follows `glab`'s documented shape but is
 not live-tested.
 

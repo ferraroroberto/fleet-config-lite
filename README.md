@@ -15,8 +15,8 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `skills/e2e/` | Proportionate e2e skill (needs the sibling `skills/_lib/`): `SKILL.md` + `e2e_route.py` + the bundled `classify_e2e.py` router — see "The /e2e skill" below |
 | `skills/quick/` | Trunk-commit lane below the issue threshold: one capped, verified commit straight to the default branch (no issue, no MR), auto-escalating to the issue workflow when the change outgrows its caps — the sanctioned exception to "never commit directly to the default branch" declared in `global-instructions.md` |
 | `skills/learning-log/` | Host-agnostic (GitHub or GitLab) learning log + productivity stats from this repo's sibling-repo work stream: `SKILL.md` + stdlib `gather.py` (needs the sibling `skills/_lib/`) — see "The /learning-log skill" below |
-| `skills/codebase-audit/`, `skills/audit-fleet/`, `skills/cleanup-fleet/` | Gated, credit-bounded resting-state quality audit: `SKILL.md` + self-contained `audit_gate.py` (significance gate, ledger, managed-issue upsert; `gh` or `glab`), a sequential fleet loop, and a one-repo-per-run fix loop — see "The audit skills" below |
-| `skills/prompt-audit/` | Capped audit of instruction files (at most 2 repos per run, this repo and its siblings) against the vendors' current prompting guides: `SKILL.md` + byte-identical `rules.md`/`sources.toml` + self-contained `audit.py` and its sibling `audit_lint.py` (freshness gate, lint, skip-unchanged ledger, digest; `gh` or `glab`) — see "The /prompt-audit skill" below |
+| `skills/codebase-audit/`, `skills/audit-fleet/`, `skills/cleanup-fleet/` | Gated, credit-bounded resting-state quality audit: `SKILL.md` + `audit_gate.py` (significance gate, ledger, managed-issue upsert; `gh` or `glab`; needs the sibling `skills/_lib/`), a sequential fleet loop, and a one-repo-per-run fix loop — see "The audit skills" below |
+| `skills/prompt-audit/` | Capped audit of instruction files (at most 2 repos per run, this repo and its siblings) against the vendors' current prompting guides: `SKILL.md` + byte-identical `rules.md`/`sources.toml` + `audit.py` and its sibling `audit_lint.py` (freshness gate, lint, skip-unchanged ledger, digest; `gh` or `glab`; needs the sibling `skills/_lib/`) — see "The /prompt-audit skill" below |
 | `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported from the private life-os repo (`assets/` byte-for-byte; the scripts differ only in writing through `skills/_lib/runtime_files.py`) |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
 | `scripts/*_ratchet.py`, `.*-ratchet-baseline.json` | Nine vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment, runtime write), test-time only — see "The ratchets" below |
@@ -84,7 +84,7 @@ It is a deliberate, narrow exception to this repo's "no LLM calls" principle, th
 | `skills/prompt-audit/rules.md` | `fleet-config` `.claude/skills/prompt-audit/rules.md` | `ec8436d` | `19c3703c83113fd7d73d5a4756347e097e1cf7486aa8ba5ef20674b7ef852584` |
 | `skills/prompt-audit/sources.toml` | `fleet-config` `.claude/skills/prompt-audit/sources.toml` | `ec8436d` | `257c77544604c3cce63f5b8c1b80fb76dc014f27414039dc605bb627eadf285b` |
 
-The hashes are of the committed (LF) bytes; a checkout with `core.autocrlf=true` shows CRLF on disk, which `audit.py` normalises before hashing the rubric. `audit.py` itself is a self-contained near-duplicate of the private helper, not a copy.
+The hashes are of the committed (LF) bytes; a checkout with `core.autocrlf=true` shows CRLF on disk, which `audit.py` normalises before hashing the rubric. `audit.py` itself is a near-duplicate of the private helper, not a copy; it shares its remote-URL, marker and gh/glab issue helpers with the other audit skills through `skills/_lib/issue_host.py`.
 
 ```powershell
 python skills\prompt-audit\audit.py host                  # HOST=github|CLI=gh|REPO=...
@@ -134,7 +134,7 @@ Nine vendored baseline-and-ratchet quality gates run inside `python -m unittest 
 | comment | a new issue reference inside a code comment | `[comment_ratchet]` |
 | runtime write | a Python write target resolving under a code folder (`hooks/`, `skills/`, `scripts/`) beyond the baseline; a new target it cannot resolve is NOT CONFIRMED | `[runtime_write_ratchet]` |
 
-Per-ratchet specifics that don't fit the table — the static ratchet's extra prerequisites (ruff + Node's `npx` for `jscpd`), the intentional duplicate carved out of `audit_gate.py`, the guarded writer behind the runtime-write ratchet, and the rest — live in [docs/ratchets.md](docs/ratchets.md).
+Per-ratchet specifics that don't fit the table — the static ratchet's extra prerequisites (ruff + Node's `npx` for `jscpd`), the guarded writer behind the runtime-write ratchet, and the rest — live in [docs/ratchets.md](docs/ratchets.md).
 
 ## Copilot hook gotchas (verified live, CLI 1.0.70)
 

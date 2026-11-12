@@ -23,7 +23,7 @@ Operating rules this skill encodes:
   hardcoded vendor/model name (see step 2).
 - **Host detected from `origin`.** `gather.py` drives `gh` or `glab` to match
   and needs only the stdlib, the host CLI and the sibling
-  `skills/_lib/` (`runtime_files.py`). The `glab` path is not
+  `skills/_lib/` (`runtime_files.py`, `issue_host.py`). The `glab` path is not
   live-tested, and GitLab's list API exposes no per-item diff stats, so
   additions/deletions stay `0` there.
 

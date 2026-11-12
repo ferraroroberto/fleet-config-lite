@@ -3,13 +3,14 @@ name: e2e
 description: Decide, run, and maintain a repo's end-to-end tests proportionate to the actual diff — deterministic tier routing (skip/static/full, fail-safe full), self-healing adoption from the bundled router, inline test upkeep. Called by /issue-finish and /issue-yolo before shipping; also standalone — e.g. "/e2e", "/e2e plan", "/e2e full", "run the e2e".
 ---
 
-# e2e (lite, self-contained)
+# e2e (lite)
 
 **Goal:** stop paying for a full browser suite on diffs that never touch the
 browser, **without ever under-testing** — uncertainty always escalates to the
 full suite, never narrows. Everything this skill needs ships in this folder
-(`e2e_route.py` + the bundled `classify_e2e.py` router); it has no dependency
-on any other repo or checkout.
+(`e2e_route.py` + the bundled `classify_e2e.py` router) plus the sibling
+`skills/_lib/` (`runtime_files.py`); it has no dependency on any other repo or
+checkout. Copy or junction `skills/_lib/` together with this folder.
 
 All commands below run the scripts from **this skill's base directory**
 (shown when the skill loads) with a Python ≥3.11 interpreter.

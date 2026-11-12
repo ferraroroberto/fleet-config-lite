@@ -7,7 +7,7 @@ description: Two-phase HTML presentation builder that replaces PowerPoint. Phase
 
 **Goal:** Turn a rough brief into a verified, self-contained HTML slide deck — composed from a standard component catalog, styled from a single brand-color source, presentable from any browser with zero external requests.
 
-Everything this skill needs ships in this folder (`assets/` + `scripts/`); it has no dependency on any other repo or checkout. All file references below are **relative to this skill's base directory** (shown when the skill loads); the scripts are stdlib-only, any Python ≥3.11 works.
+Everything this skill needs ships in this folder (`assets/` + `scripts/`) plus the sibling `skills/_lib/` (`runtime_files.py`, imported by `scripts/propagate.py` and `scripts/make_print.py`); it has no dependency on any other repo or checkout. All file references below are **relative to this skill's base directory** (shown when the skill loads); the scripts are stdlib-only, any Python ≥3.11 works.
 
 **Do not load the `assets/` files up front** — they are read at the point Phase 2 needs them (lean-context rule); the briefing phase doesn't need them at all.
 

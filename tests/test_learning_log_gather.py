@@ -23,43 +23,31 @@ import gather as gl  # noqa: E402
 
 
 class OwnerRepoParsingTests(unittest.TestCase):
+    """`resolve_repo_context` splits the shared parser's owner/repo into (owner, repo)."""
+
+    def _resolve(self, url):
+        with patch.object(gl, "git_remote_url", return_value=url):
+            return gl.resolve_repo_context()
+
     def test_https_github(self):
-        self.assertEqual(
-            gl.parse_owner_repo("https://github.com/ferraroroberto/fleet-config-lite.git"),
-            ("ferraroroberto", "fleet-config-lite"))
+        self.assertEqual(self._resolve("https://github.com/ferraroroberto/fleet-config-lite.git"),
+                         ("github", "ferraroroberto", "fleet-config-lite", "ferraroroberto/fleet-config-lite"))
 
     def test_ssh_github(self):
-        self.assertEqual(
-            gl.parse_owner_repo("git@github.com:ferraroroberto/fleet-config-lite.git"),
-            ("ferraroroberto", "fleet-config-lite"))
+        self.assertEqual(self._resolve("git@github.com:ferraroroberto/fleet-config-lite.git"),
+                         ("github", "ferraroroberto", "fleet-config-lite", "ferraroroberto/fleet-config-lite"))
 
     def test_https_gitlab_subgroup(self):
-        self.assertEqual(
-            gl.parse_owner_repo("https://gitlab.example.com/group/subgroup/project.git"),
-            ("group/subgroup", "project"))
+        self.assertEqual(self._resolve("https://gitlab.example.com/group/subgroup/project.git"),
+                         ("gitlab", "group/subgroup", "project", "group/subgroup/project"))
 
     def test_ssh_gitlab(self):
-        self.assertEqual(
-            gl.parse_owner_repo("git@gitlab.com:group/project.git"),
-            ("group", "project"))
+        self.assertEqual(self._resolve("git@gitlab.com:group/project.git"),
+                         ("gitlab", "group", "project", "group/project"))
 
     def test_empty_or_malformed(self):
-        self.assertEqual(gl.parse_owner_repo(""), ("", ""))
-        self.assertEqual(gl.parse_owner_repo("not-a-url"), ("", ""))
-
-
-class HostDetectionTests(unittest.TestCase):
-    def test_github(self):
-        self.assertEqual(gl.detect_host("https://github.com/a/b.git"), "github")
-
-    def test_gitlab_com(self):
-        self.assertEqual(gl.detect_host("https://gitlab.com/a/b.git"), "gitlab")
-
-    def test_self_hosted_gitlab(self):
-        self.assertEqual(gl.detect_host("git@gitlab.corp.internal:a/b.git"), "gitlab")
-
-    def test_empty_defaults_to_gitlab(self):
-        self.assertEqual(gl.detect_host(""), "gitlab")
+        self.assertEqual(self._resolve("")[1:], ("", "", ""))
+        self.assertEqual(self._resolve("not-a-url")[1:], ("", "", ""))
 
 
 class SinceResolutionTests(unittest.TestCase):

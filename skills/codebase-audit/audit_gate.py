@@ -1,7 +1,7 @@
 """Deterministic gate + managed-issue upsert for the lite /codebase-audit.
 
 Host-agnostic (GitHub `gh` or GitLab `glab`, detected from `git remote
-get-url origin`), stdlib only, self-contained: the lite counterpart of
+get-url origin`), stdlib only plus the sibling `skills/_lib/issue_host.py`: the lite counterpart of
 fleet-config's `skills/_lib/audit_issue.py`, minus everything that needs the
 private fleet (GraphQL closing references, PR diff stats, worktree claims,
 stray-collapsing, Slack). The ledger format is byte-compatible with the
@@ -41,6 +41,24 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
+from issue_host import (  # noqa: E402
+    cli_for,
+    comment_args,
+    create_issue_args,
+    created_issue_url,
+    detect_host,
+    edit_issue_args,
+    ensure_marker,
+    has_marker,
+    label_create_args,
+    list_issues_args,
+    normalise_issues,
+    parse_owner_repo,
+    url_from_view,
+    view_url_args,
+)
+
 try:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
@@ -62,7 +80,6 @@ RUBRIC_CANDIDATES = ("CLAUDE.md", "AGENTS.md", "copilot-instructions.md",
 _LOCKFILES = {"package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock",
               "Pipfile.lock", "Cargo.lock", "uv.lock", "composer.lock", "Gemfile.lock"}
 
-_MARKER_RE = re.compile(r"^[ \t]*<!--[ \t]*audit-managed:[ \t]*kind=([\w-]+)[ \t]*-->[ \t]*$", re.MULTILINE)
 _LEDGER_MARKER = "<!-- audit-ledger -->"
 _LEDGER_MARKER_OPEN = "<!-- audit-ledger"
 _LEDGER_SHA_RE = re.compile(r"^last-audited-sha:[ \t]*(\S+)[ \t]*$", re.MULTILINE)
@@ -73,22 +90,6 @@ _BRANCH_REF_RE = re.compile(r"\b[a-z]+/(\d+)-[\w-]+")
 
 
 # ---- pure helpers (unit-tested without git/gh/glab) ------------------------
-
-def marker_for(kind: str) -> str:
-    return f"<!-- audit-managed: kind={kind} -->"
-
-
-def has_marker(body: str, kind: str) -> bool:
-    """True only when the marker is the first line — a body that merely quotes
-    the marker in prose (e.g. an issue documenting this format) is not managed."""
-    m = _MARKER_RE.match((body or "").lstrip())
-    return bool(m) and m.group(1) == kind
-
-
-def ensure_marker(body: str, kind: str) -> str:
-    stripped = _MARKER_RE.sub("", body or "").lstrip("\n")
-    return f"{marker_for(kind)}\n\n{stripped}" if stripped else f"{marker_for(kind)}\n"
-
 
 def title_matches(title: str, kind: str) -> bool:
     t = (title or "").strip()
@@ -205,28 +206,6 @@ def decide(commit_count: int | None, stored_rubric: str | None, current_rubric: 
     return "AUDIT"
 
 
-# Each skill folder is installed on its own and must work with no import across skills, so
-# these remote-URL helpers are copied into skills/prompt-audit/audit.py, not shared.
-# jscpd:ignore-start
-def parse_owner_repo(remote_url: str) -> str:
-    """'owner/repo' (GitLab subgroups keep their slashes) or '' if unparseable."""
-    u = re.sub(r"\.git$", "", (remote_url or "").strip())
-    if not u:
-        return ""
-    if "://" in u:
-        m = re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/]+/(.+)$", u)
-        path = m.group(1) if m else ""
-    else:
-        path = u.partition(":")[2]
-    parts = [p for p in path.strip("/").split("/") if p]
-    return "/".join(parts) if len(parts) >= 2 else ""
-
-
-def detect_host(remote_url: str) -> str:
-    return "github" if "github.com" in (remote_url or "") else "gitlab"
-# jscpd:ignore-end
-
-
 # ---- git plumbing -----------------------------------------------------------
 
 def _run(cmd: list[str], cwd: str | None = None) -> subprocess.CompletedProcess:
@@ -304,7 +283,7 @@ def resolve_repo(repo_path: str) -> tuple[str, str]:
 
 
 def _cli(host: str, args: list[str]) -> str:
-    cli = "gh" if host == "github" else "glab"
+    cli = cli_for(host)
     try:
         r = _run([cli, *args])
     except (OSError, subprocess.SubprocessError) as exc:
@@ -315,19 +294,9 @@ def _cli(host: str, args: list[str]) -> str:
 
 
 def list_issues(host: str, repo: str, label: str) -> list[dict]:
-    """Issues carrying `label`, any state, normalised to {number, title, body,
-    state}. Always label-filtered: an unfiltered list is capped by the CLI and
-    silently misses the ledger on a repo with hundreds of issues."""
-    if host == "github":
-        out = _cli(host, ["issue", "list", "--repo", repo, "--state", "all", "--label", label,
-                          "--limit", "300", "--json", "number,title,body,state"])
-        return [{**i, "state": (i.get("state") or "").lower()} for i in (json.loads(out) if out else [])]
-    # glab: best-effort per documented CLI shape, not live-tested here.
-    out = _cli(host, ["issue", "list", "--repo", repo, "--all", "--label", label, "--per-page", "100",
-                      "--output", "json"])
-    return [{"number": i.get("iid"), "title": i.get("title", ""), "body": i.get("description") or "",
-             "state": "open" if i.get("state") == "opened" else "closed"}
-            for i in (json.loads(out) if out else [])]
+    """Issues carrying `label`, any state, normalised to {number, title, body, state, url}."""
+    out = _cli(host, list_issues_args(host, repo, label))
+    return normalise_issues(host, json.loads(out) if out else [])
 
 
 def open_issues(host: str, repo: str, label: str) -> list[dict]:
@@ -335,17 +304,13 @@ def open_issues(host: str, repo: str, label: str) -> list[dict]:
 
 
 def issue_url(host: str, repo: str, number: int) -> str:
-    if host == "github":
-        return _cli(host, ["issue", "view", str(number), "--repo", repo, "--json", "url", "-q", ".url"])
-    out = _cli(host, ["issue", "view", str(number), "--repo", repo, "--output", "json"])
-    return (json.loads(out) if out else {}).get("web_url", "")
+    out = _cli(host, view_url_args(host, repo, number))
+    return url_from_view(host, json.loads(out) if out else {}) or ""
 
 
 def ensure_label(host: str, repo: str, label: str) -> None:
-    args = (["label", "create", label, "--repo", repo] if host == "github"
-            else ["label", "create", "--repo", repo, "-n", label])
     try:
-        _run(["gh" if host == "github" else "glab", *args])  # duplicate-create fails harmlessly
+        _run([cli_for(host), *label_create_args(host, repo, label)])  # duplicate-create fails harmlessly
     except (OSError, subprocess.SubprocessError):
         pass
 
@@ -366,18 +331,8 @@ def upsert_issue(host: str, repo: str, kind: str, title: str, body: str, label: 
     try:
         ensure_label(host, repo, label)
         if keep is None:
-            if host == "github":
-                return _cli(host, ["issue", "create", "--repo", repo, "--title", title, "--body-file", tmp,
-                                   "--label", label, "--assignee", "@me"])
-            out = _cli(host, ["issue", "create", "--repo", repo, "--title", title, "--description-file", tmp,
-                              "--label", label, "--assignee", "@me", "--yes"])
-            return out.splitlines()[-1] if out else ""
-        if host == "github":
-            _cli(host, ["issue", "edit", str(keep), "--repo", repo, "--title", title, "--body-file", tmp,
-                        "--add-label", label])
-        else:
-            _cli(host, ["issue", "update", str(keep), "--repo", repo, "--title", title,
-                        "--description-file", tmp, "--label", label])
+            return created_issue_url(_cli(host, create_issue_args(host, repo, title, tmp, label)))
+        _cli(host, edit_issue_args(host, repo, keep, title, tmp, label))
         return issue_url(host, repo, keep)
     finally:
         try:
@@ -389,10 +344,7 @@ def upsert_issue(host: str, repo: str, kind: str, title: str, body: str, label: 
 def comment_issue(host: str, repo: str, number: int, body: str) -> None:
     tmp = _write_tmp(body)
     try:
-        if host == "github":
-            _cli(host, ["issue", "comment", str(number), "--repo", repo, "--body-file", tmp])
-        else:
-            _cli(host, ["issue", "note", str(number), "--repo", repo, "--message-file", tmp])
+        _cli(host, comment_args(host, repo, number, tmp))
     finally:
         try:
             os.unlink(tmp)

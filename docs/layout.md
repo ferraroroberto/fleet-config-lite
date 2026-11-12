@@ -20,7 +20,7 @@ docs/layout.md                   this file
 - `hooks/` — `session_state.py` (sole writer of the sessions state file) and `_lib.py` (payload helpers).
 - `hook-config/` — `session-state.template.json`, the hook definition rendered with absolute paths.
 - `skills/issue-add`, `issue-start`, `issue-finish`, `issue-yolo`, `quick` — issue-workflow skills, `SKILL.md` only.
-- `skills/_lib/` — `runtime_files.py`, the guarded writer the e2e, learning-log and slides scripts share.
+- `skills/_lib/` — `runtime_files.py`, the guarded writer the e2e, learning-log and slides scripts share, and `issue_host.py`, the remote-URL parser, managed-issue marker and gh/glab issue argv the codebase-audit, prompt-audit and learning-log scripts share.
 - `skills/e2e/` — `SKILL.md`, `e2e_route.py` and the vendored `classify_e2e.py`.
 - `skills/codebase-audit/` — `SKILL.md` and `audit_gate.py`; `audit-fleet` and `cleanup-fleet` are `SKILL.md` only.
 - `skills/learning-log/` — `SKILL.md` and `gather.py`.

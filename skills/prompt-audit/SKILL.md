@@ -20,7 +20,7 @@ Files in this directory:
 
 - `rules.md` — the rule-set (`R-NN` blocks: tags, detect, why, fix shape, source). Its normalised sha256 is the ledger's `rubric-sha`.
 - `sources.toml` — one block per vendor page with its baseline sha and marker, plus the audience vocabulary that decides which rules are primary for a file.
-- `audit.py` — every exact step: `host`, `sources`, `diff-source`, `plan`, `digest`, `ledger-write`, `comment`. Stdlib only, Python 3.11+, `gh` or `glab` picked from the home repo's `origin`.
+- `audit.py` — every exact step: `host`, `sources`, `diff-source`, `plan`, `digest`, `ledger-write`, `comment`. Stdlib only, Python 3.11+, `gh` or `glab` picked from the home repo's `origin`; it imports the sibling `skills/_lib/` (`issue_host.py`) for remote-URL parsing, the managed-issue marker and the gh/glab issue commands.
 
 `<py>` below is the Python 3.11+ interpreter; `<audit>` is `<base-dir>/audit.py`, where `<base-dir>` is this skill's directory as shown when the skill loads.
 
@@ -125,7 +125,7 @@ A few lines: `status`, guides (sources checked / not-checked / changed), repos a
 
 ## Notes
 
-- **Deliberate near-duplicate.** `audit.py` repeats helpers from `fleet-config`'s `.claude/skills/prompt-audit/audit.py` (hashing, frontmatter read, rule parsing, lint, ledger parse and render, digest). Self-containment is the fleet-config-lite contract — no shared `_lib`, no dependency on another checkout — so a duplication audit should not flag it. `rules.md` and `sources.toml` are byte-identical copies; the source commit is recorded in this repo's README.
+- **Deliberate near-duplicate.** `audit.py` repeats helpers from `fleet-config`'s `.claude/skills/prompt-audit/audit.py` (hashing, frontmatter read, rule parsing, lint, ledger parse and render, digest). Only the remote-URL, marker and gh/glab issue helpers are shared (`skills/_lib/issue_host.py`, with `codebase-audit` and `learning-log`); there is no dependency on another checkout, and the rest of the near-duplicate is deliberate, so a duplication audit should not flag it. `rules.md` and `sources.toml` are byte-identical copies; the source commit is recorded in this repo's README.
 - **One ledger format.** The ledger uses the same `<!-- audit-managed: kind=prompt-audit -->` marker, title and hidden `<!-- prompt-audit-ledger -->` block as the private tool, so either tool reads the other's ledger unchanged. The rubric hash is line-ending normalised, so both tools agree on it.
 - **`global-instructions.md` is the neutral counterpart of `fleet-config`'s `global-CLAUDE.md`.** It is scanned first, and it is where shared text belongs: a line that also sits in `project-scaffolding/CLAUDE.md` is collapsed to one digest entry with the repos that carry it, so it is fixed once at the source rather than N times.
 - **Why no cleanup issues.** The private tool files per-repo `prompt-drift` issues for its cleanup bucket; this repo's `/cleanup-fleet` has no such bucket, so those issues would have no consumer. Findings stay in the digest; a human files work from it with `/issue-add`.

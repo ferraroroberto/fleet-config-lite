@@ -298,10 +298,12 @@ class ContractTests(unittest.TestCase):
             hits = [l for l in lines if self.VENDOR_WORDS.search(self.FILE_CONVENTIONS.sub("", l))]
             self.assertEqual(hits, [], name)
 
-    def test_helper_is_self_contained(self):
+    def test_helper_reaches_only_the_shared_issue_host_module(self):
         src = (SKILL_DIR / "audit.py").read_text(encoding="utf-8")
         self.assertNotRegex(src, r"(?m)^\s*(?:from|import)\s+(?:_lib|git_run|audit_issue|no_window)\b")
-        self.assertNotIn("sys.path.insert", src)
+        self.assertEqual(re.findall(r"(?m)^[ \t]*sys\.path\.insert\(.*", src),
+                         ['sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))'])
+        self.assertTrue((SKILL_DIR.parent / "_lib" / "issue_host.py").is_file())
         self.assertEqual(src.count("subprocess.run("), 1)
         self.assertIn("creationflags=NO_WINDOW", src)
 

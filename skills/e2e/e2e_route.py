@@ -1,10 +1,10 @@
 """Deterministic front-end for the lite `/e2e` skill.
 
 A downscaled form of `fleet-config`'s `skills/_lib/e2e_route.py`
-with one deliberate difference: this copy is **fully self-contained**. The
+with one deliberate difference: this copy depends on no external checkout. The
 self-healing bootstrap sources the `classify_e2e.py` **bundled next to this
-script** — never an external checkout — so the whole `skills/e2e/` folder
-propagates to any machine as-is.
+script**, so `skills/e2e/` plus its sibling `skills/_lib/` (the guarded writer
+imported below) propagate to any machine as-is.
 
 The routing mechanism is the bundled classifier: a target repo's own
 `scripts/classify_e2e.py` reads that repo's `.fleet.toml` `[e2e]` table and

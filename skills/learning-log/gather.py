@@ -1,6 +1,6 @@
 """Gather + bucket + stat the sibling-repo work stream for /learning-log (lite).
 
-Self-contained (stdlib + `gh`/`glab`), host-agnostic, no scheduler.
+Stdlib + `gh`/`glab` + the sibling `skills/_lib/`, host-agnostic, no scheduler.
 
 Detects whether the *current* repo's `origin` remote is GitHub or GitLab
 (`git remote get-url origin`) and drives the matching CLI throughout — the

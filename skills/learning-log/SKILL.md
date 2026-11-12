@@ -22,7 +22,8 @@ Operating rules this skill encodes:
   already running this session, at low reasoning effort, and never a
   hardcoded vendor/model name (see step 2).
 - **Host detected from `origin`.** `gather.py` drives `gh` or `glab` to match
-  and is self-contained (stdlib + the host CLI). The `glab` path is not
+  and needs only the stdlib, the host CLI and the sibling
+  `skills/_lib/` (`runtime_files.py`). The `glab` path is not
   live-tested, and GitLab's list API exposes no per-item diff stats, so
   additions/deletions stay `0` there.
 

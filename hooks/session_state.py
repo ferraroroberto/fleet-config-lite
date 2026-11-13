@@ -8,7 +8,7 @@ columns without owning any hook plumbing. The Board only *reads* the file;
 this module is the only writer.
 
 Copilot CLI payloads carry no event-name field, so the hook config
-(``hook-config/session-state.template.json``) passes the event name as
+(``hooks/session-state.template.json``) passes the event name as
 ``argv[1]``. What each event does to a row is declared once, in
 :func:`next_transition`; ``docs/session-state.md`` holds the state table.
 

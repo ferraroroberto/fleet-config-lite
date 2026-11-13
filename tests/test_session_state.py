@@ -276,7 +276,7 @@ class HookCommandUtf8Tests(unittest.TestCase):
         if not shells:
             self.skipTest("no PowerShell on this host")
         template = json.loads(
-            (self.REPO / "hook-config" / "session-state.template.json").read_text(encoding="utf-8")
+            (self.REPO / "hooks" / "session-state.template.json").read_text(encoding="utf-8")
         )
         command = (
             template["hooks"]["userPromptSubmitted"][0]["powershell"]

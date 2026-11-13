@@ -10,7 +10,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 |---|---|
 | `hooks/session_state.py` | **Sole writer** of `sessions-state.json` — one row per live Copilot session (`working` / `needs-you` / `idle`), consumed read-only by app-launcher-lite's Board; the status machine is declared in [`docs/session-state.md`](docs/session-state.md) |
 | `hooks/_lib.py` | Payload helpers: camelCase→snake_case normalization, stdin JSON, cwd resolution |
-| `hook-config/session-state.template.json` | Copilot CLI hook definition (rendered with absolute paths by the installer) |
+| `hooks/session-state.template.json` | Copilot CLI hook definition (rendered with absolute paths by the installer) |
 | `skills/issue-{add,start,finish,yolo}/` | Lite GitLab (`glab`) issue-workflow skills, discovered by Copilot from `~/.copilot/skills/` |
 | `skills/e2e/` | Proportionate e2e skill (needs the sibling `skills/_lib/`): `SKILL.md` + `e2e_route.py` + the bundled `classify_e2e.py` router — see "The /e2e skill" below |
 | `skills/quick/` | Trunk-commit lane below the issue threshold: one capped, verified commit straight to the default branch (no issue, no MR), auto-escalating to the issue workflow when the change outgrows its caps — the sanctioned exception to "never commit directly to the default branch" declared in `global-instructions.md` |

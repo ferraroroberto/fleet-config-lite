@@ -1,6 +1,6 @@
 # install.ps1 - wire fleet-config-lite into GitHub Copilot CLI (user scope).
 #
-# 1. Renders hook-config/session-state.template.json with this checkout's
+# 1. Renders hooks/session-state.template.json with this checkout's
 #    absolute path and a resolved Python executable, into
 #    %USERPROFILE%\.copilot\hooks\fleet-config-lite-session-state.json
 #    (user-level hooks are the reliable location: repo-level .github/hooks
@@ -47,7 +47,7 @@ New-Item -ItemType Directory -Force -Path $hooksDir, $stateDir | Out-Null
 
 # --- render the hook config with absolute paths (forward slashes keep the
 # --- JSON free of escaping headaches)
-$template = Get-Content (Join-Path $repo 'hook-config\session-state.template.json') -Raw
+$template = Get-Content (Join-Path $repo 'hooks\session-state.template.json') -Raw
 $rendered = $template.Replace('{{PYTHON}}', ($python -replace '\\', '/')).Replace('{{REPO}}', ($repo -replace '\\', '/'))
 # Hyphens only in the filename: Copilot CLI 1.0.70 silently ignores hook
 # files with more than one dot in the name (verified live).

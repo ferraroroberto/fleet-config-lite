@@ -7,7 +7,6 @@ icon         = "🧰"
 display_name = "Fleet Config Lite"
 description  = "Lite fleet-config: Copilot CLI hooks, issue-workflow skills and installer."
 shape        = "skills-governance"
-extra_roots  = ["hook-config"]
 
 [vendored]
 static_ratchet = { src = "scripts/static_ratchet.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/static_ratchet.py" }

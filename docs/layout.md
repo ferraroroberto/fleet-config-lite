@@ -7,8 +7,7 @@ Where code goes in this repo. The shape is `skills-governance` (declared in `.fl
 install.ps1                      idempotent installer into ~/.copilot/
 global-instructions.md           agent-agnostic global instructions the installer links
 README.md                        index: install, run, gate, one line per feature
-hooks/                           one module per Copilot hook + the shared payload helpers
-hook-config/                     hook definition template the installer renders
+hooks/                           one module per Copilot hook, the shared payload helpers and the hook definition template the installer renders
 skills/<name>/SKILL.md           one folder per skill; its helpers sit beside it
 scripts/                         vendored scaffold ratchets and their gate wrappers
 tests/                           stdlib unittest, one file per module under test
@@ -17,8 +16,7 @@ docs/layout.md                   this file
 
 ## Folders and subpackages
 
-- `hooks/` — `session_state.py` (sole writer of the sessions state file) and `_lib.py` (payload helpers).
-- `hook-config/` — `session-state.template.json`, the hook definition rendered with absolute paths.
+- `hooks/` — `session_state.py` (sole writer of the sessions state file), `_lib.py` (payload helpers) and `session-state.template.json`, the hook definition the installer renders with absolute paths.
 - `skills/issue-add`, `issue-start`, `issue-finish`, `issue-yolo`, `quick` — issue-workflow skills, `SKILL.md` only.
 - `skills/_lib/` — `runtime_files.py`, the guarded writer the e2e, learning-log and slides scripts share, and `issue_host.py`, the remote-URL parser, managed-issue marker and gh/glab issue argv the codebase-audit, prompt-audit and learning-log scripts share.
 - `skills/e2e/` — `SKILL.md`, `e2e_route.py` and the vendored `classify_e2e.py`.
@@ -33,7 +31,3 @@ docs/layout.md                   this file
 - A helper used by one skill stays in that skill's folder. At its second caller it moves to `skills/_lib/`. A script reaches it through its real (resolved) path, so the junction layout of `~/.copilot/skills/` does not matter.
 - A script that a `SKILL.md` invokes by path keeps that path.
 - A new test goes in `tests/` as `test_<module>.py`. Once `tests/` nears 40 modules, new tests go in a subfolder that mirrors the code under test.
-
-## Declared exceptions
-
-- `hook-config/` is in `extra_roots`: the installer renders it into the Copilot hook definition, so it is data for the installer and not code under `hooks/`.

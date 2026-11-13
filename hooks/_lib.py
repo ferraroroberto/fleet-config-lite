@@ -16,8 +16,8 @@ name field** (verified live against Copilot CLI 1.0.70, 2026-08-01):
 * ``sessionEnd``          → ``{..., "reason"}``
 
 ``timestamp`` is epoch milliseconds. Because the payload does not name its
-own event, the hook-config JSON passes the event name as ``argv[1]`` to the
-hook script — see ``hook-config/session-state.template.json``.
+own event, the hook definition JSON passes the event name as ``argv[1]`` to the
+hook script — see ``hooks/session-state.template.json``.
 
 ``normalize_payload`` converts the camelCase envelope to the snake_case
 vocabulary the writers read (``session_id``, ``cwd``, ``transcript_path``),

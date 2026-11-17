@@ -25,7 +25,11 @@ deleted, issue closed, back on an updated default branch".
 ### 2. Verification gate
 
 Run the project's declared gate (README/AGENTS.md — e.g. tests + lint +
-byte-compile). Red gate → stop and report; never ship on red.
+byte-compile) through the evidence helper:
+`python <base-dir>/../_lib/gate_evidence.py run --label gate --repo . -- <gate command>`.
+It binds the result to the tree and marks the gate in flight, so a
+chief-dispatched lane is never compacted mid-gate. Red gate → stop and
+report; never ship on red.
 
 ### 2b. E2e leg (delegated to `/e2e`)
 

@@ -53,6 +53,12 @@ Copilot's `agentStop` payload carries no reply text, only `transcriptPath`, the 
 
 Not carried: upstream skips a nested print-mode child (a `claude -p` a lane starts) that inherits the lane's `APP_LAUNCHER_SESSION_ID`. Copilot exposes no entrypoint marker for that, so a `copilot -p` run from inside a chief-managed lane still writes events as the lane. The chief dedupes by `id` and reads the exchange, so the cost is a spurious wake.
 
+## Compaction
+
+`chief_ops.py context [<sid>]` reads a session's context-window use where Copilot records it: the newest `session.usage_record` in the session's `events.jsonl`, as `round(100 * inputTokens / maxPromptTokens)`. The launcher session id is joined to Copilot's session through the `sessions-state.json` row the hook writes (`launcher_session_id`, newest `updated_at`), and the log is that row's `transcript_path`, else `~/.copilot/session-state/<id>/events.jsonl`. app-launcher-lite's own `/context` endpoint is not used, because it reads a statusline Copilot does not print. If any step can't be read (no row, no log, no usage record, a missing field), the reading is `percent=unknown` with the reason, never 0.
+
+`compact-due` compares the chief's reading with the Settings threshold (`/api/board/chief-settings`, `auto_compact_threshold`; 0 means off) and prints `COMPACT_DUE`, `COMPACT_NOT_DUE`, `COMPACT_OFF` or `COMPACT_DUE=unknown`. `inbox` prints the same line when the caller is the live chief and the context is due or unknown. `self-compact` (the chief) and `lane-compact` (a dispatched lane) post `/compact <focus>` to the caller's own session behind `chief/compact.py`'s refusals. `self-compact` refuses on an unknown percentage, below the threshold, or when the handover log (`chief-handover.md`) or the plan is older than 10 minutes. `lane-compact` refuses without a fresh `lane-handoffs/<sid>.md`, or while a gate runs in the lane's tree. That gate state is the in-flight marker `gate_evidence.py run` writes, which is why the lite issue skills now run their gate through it. Copilot queues a slash command typed mid-turn and runs it at turn end; that is the probe's manual item `compact_queued_midturn`, unknown until recorded.
+
 ## Port provenance
 
 These files are byte-identical copies of `fleet-config`'s `skills/_lib/` at commit `173b70a`, re-vendored by replacing the file whole, never by editing it here. `tests/test_chief_port.py` fails when one drifts from its hash. The hashes are of the LF bytes; a CRLF checkout is normalised before hashing.
@@ -76,8 +82,11 @@ These files are byte-identical copies of `fleet-config`'s `skills/_lib/` at comm
 | `skills/_lib/owner_check/block.py` | `bf896b68ba15c6cab78b51e60cb9b5e778130ae87bfbbbffbad501642074e198` |
 | `skills/_lib/fleet_core/fleet_repo_scan.py` | `038aa50e37a105e07dfb4e360d86702804e2ec009cc5b8a6e292416c7b5b656f` |
 | `skills/_lib/chief/steer_delivery.py` | `164f17148fbcc86f4c9ae776f189c4d2bb18c439a85e9d8428f4b8243e7e5dae` |
+| `skills/_lib/chief/compact.py` | `beaf990766b03bffd377797d4c37f2ea3d33e57d9e8a62f252bb501c8c69991a` |
+| `skills/_lib/gate_evidence.py` | `af2e9ae0fd22973e5b6e41c2a120033f96d342e3e518ad8de1f3f61efe9b504f` |
+| `skills/_lib/fleet_core/utf8_stdio.py` | `563f14f98d11b4b31f218d98066e532a0930aef53e8cb8a71f6affef2deacae5` |
 
-Lite-specific, not copies: `skills/_lib/chief_ops.py`, which mounts only the subcommands this tree carries; `skills/_lib/chief/lite_commands.py`, `lite_lanes.py` and `lite_verify.py`, its handlers (`lite_lanes.py` keeps upstream's `chief/commands.py` bodies; only the grokbot line, the Codex catalog and the Telegram escalation are gone); `skills/_lib/chief/launcher.py`, upstream's copy with three seams changed: the lite base URL, `glab` for issue state, and no Codex catalog; `skills/_lib/owner_check/__init__.py`, which exposes only `block`; `hooks/chief_inbox.py`, the mailbox writer for Copilot's payloads; and `skills/_lib/fleet_core/hooks_state.py`, which differs from upstream only in the Copilot state directory and its override variable. The ported docstrings still name `~/.claude/hooks/state/` and `CLAUDE_HOOKS_STATE_DIR`. Behaviour follows `hooks_state.py`, not that wording.
+Lite-specific, not copies: `skills/_lib/chief_ops.py`, which mounts only the subcommands this tree carries; `skills/_lib/chief/lite_commands.py`, `lite_lanes.py`, `lite_verify.py`, `lite_compact.py` and `copilot_context.py`, its handlers (`lite_lanes.py` keeps upstream's `chief/commands.py` bodies; only the grokbot line, the Codex catalog and the Telegram escalation are gone); `skills/_lib/chief/launcher.py`, upstream's copy with three seams changed: the lite base URL, `glab` for issue state, and no Codex catalog; `skills/_lib/owner_check/__init__.py`, which exposes only `block`; `hooks/chief_inbox.py`, the mailbox writer for Copilot's payloads; and `skills/_lib/fleet_core/hooks_state.py`, which differs from upstream only in the Copilot state directory and its override variable. The ported docstrings still name `~/.claude/hooks/state/` and `CLAUDE_HOOKS_STATE_DIR`. Behaviour follows `hooks_state.py`, not that wording.
 
 ## Not carried yet
 

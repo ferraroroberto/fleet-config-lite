@@ -21,7 +21,9 @@ uninterrupted run.
    branch (stop on a dirty tree), cut `<type>/<N>-<slug>`.
 2. **Build:** implement the issue completely. No plan gate — but surface any
    discovery that contradicts the issue's premise instead of building on it.
-3. **Validate hard:** run the project's full verification gate. Red → fix and
+3. **Validate hard:** run the project's full verification gate through
+   `python <base-dir>/../_lib/gate_evidence.py run --label gate --repo . -- <gate command>`
+   (binds the result to the tree; marks the gate in flight). Red → fix and
    rerun; only a green gate proceeds. Never skip, never ship on red. Then run
    the `/e2e` skill — proportionate e2e for the diff (`skip`/`static`/`full`,
    fail-safe `full`); it carries the gate's result if the slice already ran.

@@ -75,6 +75,7 @@ from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from chief import (  # noqa: E402
+    drain,
     journal,
     launcher,
     lite_commands,
@@ -98,6 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
     lite_verify.add_parser(sub)
     lite_merge.add_parser(sub)
     lite_sweep.add_parser(sub)
+    drain.add_parsers(sub)
     lite_compact.add_compact_parsers(sub)
     return parser
 

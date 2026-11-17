@@ -63,6 +63,14 @@ Two sessions on one repo collide in the study phase, long before either cuts a b
 
 `chief_ops.py sweep [--apply]` classifies finished lane worktrees with the ported `chief/chief_sweep.py`. A worktree is finished once a merged request covers its HEAD. The lookup dispatches on the remote's host: `glab mr list` for GitLab, normalised to the `gh pr list` rows the scan reads, and the ported `gh` lookup for GitHub. The sweep folder is the parent of this checkout, which on a full-fleet machine also holds that fleet's worktrees. So lite keeps only worktrees of lite repos (named in lite's own registry or active-issue markers, or named `*-lite`). Every other worktree is listed as `OUT_OF_SCOPE=` and never removed.
 
+## Owner checks and drain
+
+`skills/_lib/owner_check/` is fleet-config's owner-check package. `cli.py`, `block.py`, `rule.py`, `backfill.py`, `reclassify.py` and `repair.py` are byte-identical ports. The forge seam `github.py` keeps upstream's module name and every function they call, but answers through `glab` against GitLab: issue view, notes and closing merge requests via `glab api`, labels via `glab issue update`, and merge request files via the `diffs` API. A failed call raises `GhError`, which every caller reports as `unknown`. The launcher's Board (`cli.py list --json`, `clear`), lite `issue-start`'s gate (`cli.py gate <repo>#<N>`), `dispatch`'s owner rail and `plan add --kind owner` all read it.
+
+Labels are plain `needs-owner` and `needs-validation` by default, which work on any GitLab tier. Opting in with `[owner_check] label_scope = "<scope>"` in this repo's `.fleet.toml` writes GitLab scoped labels instead (`<scope>::needs-owner`, one of a kind per issue). Reads map them back to the plain name, so every reader's `"needs-owner" in labels` check is unchanged. The fleet is every sibling checkout with a GitLab remote. GitLab numbers merge requests apart from issues, so a "PR" in the package's vocabulary is a merge request iid.
+
+`chief_ops.py drain [--dry-run]` is fleet-config's `chief/drain.py` with four seams changed. It scans the open issues of the lite GitLab fleet through `glab`, gets the audit-managed marker from `issue_host`, has no machine-local projects table (so no repo is switched off from auto-ship), and dispatches through the lite rails. Its generic brief is `chief/drain_brief.md`, which is lite's own. With Settings' `auto_drain` on, it queues open audit issues that need no owner step and dispatches queued rows into free worker slots in plan order. `chief_ops.py slots-idle` is drain's idle-slot line (`SLOTS_IDLE=<n|unknown|off> reason=...`), which the guard hook reads; `off` and `0` never hold.
+
 ## Guard hooks
 
 `hooks/chief_guard.py` is registered for three Copilot events through `hooks/chief-guard.template.json`, which `install.ps1` renders next to the session-state config. All three behaviours were verified live on CLI 1.0.112 by `scripts/copilot_probe.py`: `sessionStart` `additionalContext` reaches the model, `agentStop` `decision: block` forces another turn, and `preToolUse` `permissionDecision: deny` stops the tool call. Each answer is emitted in both Copilot's own fields and the Claude Code `hookSpecificOutput` shape Copilot also reads.
@@ -102,6 +110,12 @@ These files are byte-identical copies of `fleet-config`'s `skills/_lib/` at comm
 | `skills/_lib/chief/digest.py` | `152d2db0e73381b17ac77905376ba6d1b197f7f322625874e28182ef0addfd29` |
 | `skills/_lib/chief/rails.py` | `8608a2ff8b7f4dbc00224fbaa943d165b2cd8a38e04d725f98c1d1ab3f5638bf` |
 | `skills/_lib/owner_check/block.py` | `bf896b68ba15c6cab78b51e60cb9b5e778130ae87bfbbbffbad501642074e198` |
+| `skills/_lib/owner_check/__init__.py` | `5b5d28ef222565346788384d0a32b6dbf7dd406fd8f7d010eda35aca4ac0e3de` |
+| `skills/_lib/owner_check/cli.py` | `22582e7a1899d4c745e5aa49ffd1f2dd0964d6467bc2493fc74d2408f940a141` |
+| `skills/_lib/owner_check/rule.py` | `2afbf5256e706e0a0626f63906f49007deda82539886d2085e6ad8ca3d2095b4` |
+| `skills/_lib/owner_check/backfill.py` | `4ca958f116bc38b166d37f7449645e32edff58fca868764958f151479e7756f7` |
+| `skills/_lib/owner_check/reclassify.py` | `95dc261cc8ac241a21c02202a2e32cc9e478c2a990460b5dfc7836cfe3223211` |
+| `skills/_lib/owner_check/repair.py` | `f1a536abd71bfa76278ce3c3023d076422f92870efa52c676c26c39a786c7636` |
 | `skills/_lib/fleet_core/fleet_repo_scan.py` | `038aa50e37a105e07dfb4e360d86702804e2ec009cc5b8a6e292416c7b5b656f` |
 | `skills/_lib/chief/steer_delivery.py` | `164f17148fbcc86f4c9ae776f189c4d2bb18c439a85e9d8428f4b8243e7e5dae` |
 | `skills/_lib/chief/compact.py` | `beaf990766b03bffd377797d4c37f2ea3d33e57d9e8a62f252bb501c8c69991a` |
@@ -117,8 +131,4 @@ These files are byte-identical copies of `fleet-config`'s `skills/_lib/` at comm
 | `skills/_lib/worktree/service_probe.py` | `30d82159a90f1cb2979fbfa5bde3442526ecb103f63dc1b2a347622d279b66f5` |
 | `skills/_lib/worktree/worktree_config.py` | `14e88f205b1685bf7c2dc4cf544f969a0cdfdb5ff88dd610b0e2ba3ec2ae7354` |
 
-Lite-specific, not copies: `skills/_lib/chief_ops.py`, which mounts only the subcommands this tree carries; `skills/_lib/chief/lite_commands.py`, `lite_lanes.py`, `lite_verify.py`, `lite_compact.py`, `lite_merge.py`, `lite_sweep.py` and `copilot_context.py`, its handlers (`lite_lanes.py` keeps upstream's `chief/commands.py` bodies; only the grokbot line, the Codex catalog and the Telegram escalation are gone); `skills/_lib/chief/launcher.py`, upstream's copy with three seams changed: the lite base URL, `glab` for issue state, and no Codex catalog; `skills/_lib/owner_check/__init__.py`, which exposes only `block`; `hooks/chief_inbox.py`, the mailbox writer for Copilot's payloads; and `skills/_lib/fleet_core/hooks_state.py`, which differs from upstream only in the Copilot state directory and its override variable. The ported docstrings still name `~/.claude/hooks/state/` and `CLAUDE_HOOKS_STATE_DIR`. Behaviour follows `hooks_state.py`, not that wording.
-
-## Not carried yet
-
-A queue row parked with `--kind owner` needs the `needs-owner` label check from `owner_check`, which this tree does not carry yet. Until it does, that write is refused with `ERROR: not available in this checkout` and nothing is written. `--kind umbrella` and `--kind 'blocked-by <repo>#<N>'` work.
+Lite-specific, not copies: `skills/_lib/chief_ops.py`, which mounts only the subcommands this tree carries; `skills/_lib/chief/lite_commands.py`, `lite_lanes.py`, `lite_verify.py`, `lite_compact.py`, `lite_merge.py`, `lite_sweep.py` and `copilot_context.py`, its handlers (`lite_lanes.py` keeps upstream's `chief/commands.py` bodies; only the grokbot line, the Codex catalog and the Telegram escalation are gone); `skills/_lib/chief/launcher.py`, upstream's copy with three seams changed: the lite base URL, `glab` for issue state, and no Codex catalog; `skills/_lib/owner_check/github.py`, the GitLab forge seam; `skills/_lib/chief/drain.py` and `drain_brief.md`, drain with its four named seams; `hooks/chief_inbox.py`, the mailbox writer for Copilot's payloads; and `skills/_lib/fleet_core/hooks_state.py`, which differs from upstream only in the Copilot state directory and its override variable. The ported docstrings still name `~/.claude/hooks/state/` and `CLAUDE_HOOKS_STATE_DIR`. Behaviour follows `hooks_state.py`, not that wording.

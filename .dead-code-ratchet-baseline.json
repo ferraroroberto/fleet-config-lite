@@ -6,7 +6,6 @@
     {"key": "skills/_lib/fleet_core/fleet_toml.py", "names": ["load_checked", "positive_int", "validate_layout"]},
     {"key": "skills/_lib/fleet_core/runtime_files.py", "names": ["connect_read_only", "connect_sqlite", "copy_file", "copy_tree", "file_handler"]},
     {"key": "skills/_lib/git_run.py", "names": ["run_git_bytes"]},
-    {"key": "skills/_lib/owner_check/block.py", "names": ["format_block", "latest_block", "open_kinds", "vague_action"]},
     {"key": "skills/_lib/worktree_residue.py", "names": ["unregistered_siblings"]}
   ]
 }

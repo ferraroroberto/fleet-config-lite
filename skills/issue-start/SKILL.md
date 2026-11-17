@@ -44,6 +44,11 @@ Once the branch exists, publish it for the Board:
 
 `glab issue view <N>` — read title, body, labels. If it doesn't exist, stop.
 
+Then the owner gate: `python <base-dir>/../_lib/owner_check/cli.py gate <repo>#<N>`.
+`OWNER_GATE=clear` → proceed. `blocked` → stop and print its `reason=` and
+`TRY=` lines (the issue waits on a step of the owner's). `unknown` → stop and
+say the gate could not be confirmed. Release a primary claim before stopping.
+
 ### 2. Sync the default branch
 
 Resolve the default branch rather than guessing it — `git symbolic-ref --short

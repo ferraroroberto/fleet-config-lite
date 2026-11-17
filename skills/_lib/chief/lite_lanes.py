@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Set, Tuple
 
 import chief_managed
-import chief_plan
 
 from chief.steer_delivery import (
     DEFAULT_VERIFY_POLL_INTERVAL,
@@ -474,39 +473,6 @@ def cmd_wake(args: argparse.Namespace) -> int:
     return 0 if known else 1
 
 
-def slots_idle(base_url: str, plan_path: Path) -> Tuple[str, bool]:
-    """`(SLOTS_IDLE=... line, covered)`: worker slots free while plan rows wait as `queued`.
-
-    Idle means min(free slots, queued rows); `unknown` when the board, the cap
-    or the plan can't be read. `covered` is an open `plan ask --id slots-idle`.
-    """
-    try:
-        columns = launcher._request(base_url, "/api/board").get("columns") or {}
-        settings = launcher._request(base_url, "/api/board/chief/settings").get("settings") or {}
-    except (OSError, ValueError) as exc:
-        return f"SLOTS_IDLE=unknown reason=launcher unreadable ({type(exc).__name__})", False
-    cap, managed_sids, scope_error = _worker_cap_inputs(settings)
-    if scope_error:
-        return f"SLOTS_IDLE=unknown reason=worker cap scope not confirmed: {scope_error}", False
-    try:
-        doc = chief_plan.load(plan_path)
-    except (OSError, ValueError) as exc:
-        return f"SLOTS_IDLE=unknown reason=plan unreadable ({exc})", False
-    free = max(0, cap - rails.alive_worker_count(columns, exclude_sid=rails.caller_session_id(),
-                                                  managed_sids=managed_sids))
-    queued = sum(1 for row in doc.get("queue") or [] if row.get("status") == chief_plan.QueueStatus.QUEUED)
-    covered = any(item.get("id") == "slots-idle" for item in doc.get("waiting_on_roberto") or [])
-    return f"SLOTS_IDLE={min(free, queued)} free={free} queued={queued}", covered
-
-
-def cmd_slots_idle(args: argparse.Namespace) -> int:
-    line, covered = slots_idle(args.base_url, Path(args.plan_file) if args.plan_file else chief_plan.plan_file())
-    print(line)
-    if covered:
-        print("SLOTS_COVERED=slots-idle")
-    return 1 if line.startswith("SLOTS_IDLE=unknown") else 0
-
-
 def add_lane_parsers(sub: argparse._SubParsersAction) -> None:
     """Mount the lane verbs with fleet-config's argv (the model help names Copilot ids)."""
     b = sub.add_parser("board", help="~12-line board digest")
@@ -562,11 +528,6 @@ def add_lane_parsers(sub: argparse._SubParsersAction) -> None:
     wk = sub.add_parser("wake", help="doorbell or not: read the launcher's chief_doorbell switch")
     wk.add_argument("--base-url", default=launcher.DEFAULT_BASE_URL)
     wk.set_defaults(func=cmd_wake)
-
-    si = sub.add_parser("slots-idle", help="worker slots free while plan rows wait as queued")
-    si.add_argument("--plan-file", default=None)
-    si.add_argument("--base-url", default=launcher.DEFAULT_BASE_URL)
-    si.set_defaults(func=cmd_slots_idle)
 
     st = sub.add_parser("stop", help="stop a live session (quit by default)")
     st.add_argument("sid")

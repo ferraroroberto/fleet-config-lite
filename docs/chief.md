@@ -53,6 +53,10 @@ Copilot's `agentStop` payload carries no reply text, only `transcriptPath`, the 
 
 Not carried: upstream skips a nested print-mode child (a `claude -p` a lane starts) that inherits the lane's `APP_LAUNCHER_SESSION_ID`. Copilot exposes no entrypoint marker for that, so a `copilot -p` run from inside a chief-managed lane still writes events as the lane. The chief dedupes by `id` and reads the exchange, so the cost is a spurious wake.
 
+## Merge path
+
+`chief_ops.py merge <repo>#<N> --branch <branch> [--ask]` asks GitLab to merge the lane's merge request as soon as its pipeline passes (`glab mr merge --auto-merge --squash --remove-source-branch --yes`), then reads the request back with `glab mr view`. GitLab's state, not the command's exit code, is the verdict: `MERGE=merged`, `MERGE=queued` (auto-merge set, the pipeline still running), `MERGE=refused reason=<GitLab's first line>` or `MERGE=unknown` when glab is missing, signed out or unreadable. With `--ask`, a refusal becomes a question on the chief's plan, id `merge-<repo>-<N>`, reused on a repeat refusal and journalled like any `plan ask`. So a merge GitLab refuses reaches Roberto's Board instead of stopping silently in a lane. The lite `issue-finish` skill merges through this verb and passes `--ask` in chief-dispatched sessions. GitLab is not set up on the build machine yet, so the glab flags are unit-tested against a fake runner and unknown live.
+
 ## Guard hooks
 
 `hooks/chief_guard.py` is registered for three Copilot events through `hooks/chief-guard.template.json`, which `install.ps1` renders next to the session-state config. All three behaviours were verified live on CLI 1.0.112 by `scripts/copilot_probe.py`: `sessionStart` `additionalContext` reaches the model, `agentStop` `decision: block` forces another turn, and `preToolUse` `permissionDecision: deny` stops the tool call. Each answer is emitted in both Copilot's own fields and the Claude Code `hookSpecificOutput` shape Copilot also reads.

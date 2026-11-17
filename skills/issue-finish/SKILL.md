@@ -53,12 +53,17 @@ git push -u origin HEAD
 
 ```
 glab mr create --fill --description "Closes #<N>" --assignee @me --remove-source-branch --squash-before-merge
-glab mr merge --auto-merge
+python <base-dir>/../_lib/chief_ops.py merge <repo>#<N> --branch <branch> [--ask]
 ```
 
 `Closes #<N>` in the MR description auto-closes the issue on merge to the
-default branch. If the project has no pipeline, merge directly
-(`glab mr merge --squash --remove-source-branch --yes`).
+default branch. The `merge` verb asks GitLab to merge as soon as the pipeline
+passes (a project with no pipeline merges at once) and reads the state back:
+`MERGE=merged` → land; `MERGE=queued` → wait for the pipeline, then re-run the
+verb until it says `merged` or `refused`; `MERGE=refused reason=...` → stop and
+report the reason; `MERGE=unknown` → stop, glab could not answer. In a
+chief-dispatched session pass `--ask`, so a refusal also becomes a question on
+the chief's Board (`MERGE_ASKED=`).
 
 ### 5. Land
 

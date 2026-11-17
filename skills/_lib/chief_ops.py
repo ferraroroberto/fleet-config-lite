@@ -32,6 +32,9 @@ Subcommands
       Settings threshold; `COMPACT_DUE=unknown` (exit 1) when unreadable.
   self-compact | lane-compact   queue `/compact <focus>` on the caller's own
       session behind `chief/compact.py`'s refusals (`COMPACT_QUEUED`).
+  merge <repo>#<N> --branch B [--ask]   `glab mr merge --auto-merge`, then GitLab's
+      state read back: `MERGE=merged|queued|refused|unknown`; with `--ask` a
+      refusal becomes a plan question (`MERGE_ASKED=merge-<repo>-<N>`).
   verify <repo> --expect mr-open|merged [--branch B]
       `STATUS=CLEAN|DIRTY|UNKNOWN`: a clean checkout plus the lane's GitLab
       merge request open (or merged and back on the default branch).
@@ -77,6 +80,7 @@ from chief import (  # noqa: E402
     lite_commands,
     lite_compact,
     lite_lanes,
+    lite_merge,
     lite_verify,
     plan_cli,
 )
@@ -91,6 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
     lite_commands.add_mailbox_parsers(sub)
     lite_lanes.add_lane_parsers(sub)
     lite_verify.add_parser(sub)
+    lite_merge.add_parser(sub)
     lite_compact.add_compact_parsers(sub)
     return parser
 

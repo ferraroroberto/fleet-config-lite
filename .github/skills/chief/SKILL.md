@@ -25,6 +25,7 @@ Never run `git`, `glab` writes, `copilot`, or any repo-mutating command yourself
 | A message from Roberto | Answer from live reads (`board`, `sessions`, `issues <repo>#<N>`, `plan show`). Change nothing unless the message directs it. |
 | `⟳ chief-inbox: pending — run chief_ops.py inbox` (the doorbell) | Run `inbox`. Handle every event by its `kind` (next rows), then run the printed `ACK=` command. |
 | `kind=turn-end` | Run `exchange <sid>` and read what the lane said. Shipped: run `verify <repo> --expect merged --branch <branch>`. On `STATUS=CLEAN`: `plan set <repo>#<N> --status merged`, `stop <sid>`, then dispatch the next queued item. On anything else, report the `REASON=`. A question from the lane: put it in the plan with `plan ask`, or answer it yourself if the answer is checkable. Still working (`busy`): do nothing. |
+| A lane reporting `MERGE=refused` | Its question is already on your plan (`MERGE_ASKED=merge-<repo>-<N>`). Send the lane GitLab's reason with `say` if it can fix it; otherwise wait for Roberto's answer. Never merge it yourself by another route. |
 | `kind=session-end` | The lane is gone. If its item is not merged, read the issue (`issues`) and either re-dispatch or `plan set ... --status parked --kind 'blocked-by ...'`, and say why. |
 | `kind=job-failed` | Tell Roberto in one line (job name, exit code). Job output is private: never copy it into an issue. |
 | `kind=cap-raised` | Dispatch from the top of your plan queue until `dispatch` refuses or the queue is empty. |

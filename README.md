@@ -37,6 +37,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
 
 Then restart any running Copilot CLI session (hook configs load at startup).
 
+On a machine that also runs the full fleet-config, `~/.copilot/skills` is often itself a junction into that repo's `skills/`. The installer then skips the skills step whole (`[skip] skills dir is a link into another tree`) instead of writing links into the other repo; the hooks are still installed.
+
 Requirements: Windows, Python 3.11+ on a real install path (the WindowsApps alias is rejected), GitHub Copilot CLI ≥ 1.0.70, `glab` authenticated against your GitLab host for the skills.
 
 `install.ps1` also links `global-instructions.md` into `~/.copilot/copilot-instructions.md` (symlink, falling back to a plain copy if symlinks aren't available; the copy starts with a `<!-- fleet-config-lite: managed copy ... -->` marker line). It only replaces a file it can positively identify as its own: a symlink pointing at this checkout, a plain file starting with that marker, or a plain file byte-identical to `global-instructions.md`. Anything else — your own hand-written instructions file, or the private `fleet-config`'s larger `global-CLAUDE.md` linked there — is left untouched and the installer prints `[skip]`; move or delete it and re-run if you want the installer to manage the path.

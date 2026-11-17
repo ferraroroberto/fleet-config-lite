@@ -1,25 +1,40 @@
 # install.ps1 - wire fleet-config-lite into GitHub Copilot CLI (user scope).
 #
-# 1. Renders hooks/session-state.template.json and hooks/chief-guard.template.json
-#    with this checkout's absolute path and a resolved Python executable, into
-#    %USERPROFILE%\.copilot\hooks\fleet-config-lite-<name>.json
-#    (user-level hooks are the reliable location: repo-level .github/hooks
-#    did not fire in non-interactive mode on Copilot CLI 1.0.70).
-# 2. Ensures the state directory %USERPROFILE%\.copilot\hooks\state exists.
-# 3. Links global-instructions.md into %USERPROFILE%\.copilot\copilot-instructions.md
-#    (symlink, falls back to copy) so Copilot CLI picks it up every session.
-#    Skipped if that path is already owned by something else (e.g. the
-#    private fleet-config linking its own global-CLAUDE.md there).
-# 4. Junctions skills/ into %USERPROFILE%\.copilot\skills\<skill> so Copilot
-#    discovers the lite issue skills in every session (falls back to copy if
-#    the junction fails, e.g. on a filesystem without junction support).
-#    Skipped whole when the skills dir is itself a link into another tree
-#    (a full-fleet machine), so nothing is ever written into another repo.
+# What it writes, and where:
+# 1. Hook configs: renders hooks/session-state.template.json and
+#    hooks/chief-guard.template.json with this checkout's absolute path and a
+#    resolved Python executable, into %USERPROFILE%\.copilot\hooks\
+#    fleet-config-lite-<name>.json, and makes sure hooks\state exists.
+# 2. Instructions: links global-instructions.md to
+#    %USERPROFILE%\.copilot\copilot-instructions.md (symlink, else a marked copy),
+#    only when that path is free or already ours.
+# 3. Skills: junctions skills\<name> into %USERPROFILE%\.copilot\skills\<name>,
+#    only into a real folder and never over a skill this checkout does not own.
+# 4. This checkout's .venv (stdlib only; app-launcher-lite runs the chief
+#    helpers through .venv\Scripts\python.exe), unless -SkipVenv.
+# 5. A fresh-machine checklist (Copilot CLI, glab and its sign-in, the venv,
+#    app-launcher-lite's session-host), unless -SkipChecklist.
+#
+# Shared machine: when ~/.copilot/skills or ~/.agents/skills is a link into
+# another tree, this PC also runs the full fleet. Then nothing is written that
+# would change other sessions: the skills and the instructions link are skipped
+# with a message, and the session-state hook is rendered with
+# --lite-sessions-only, so it records only sessions app-launcher-lite launched.
+# The chief-guard hooks are installed as usual; they act only for lite's chief
+# and its lanes and return at once for every other session.
+# Any user-scope target that is itself a link into another tree (the Copilot
+# home, its hooks folder, a hook config, the skills folder) is never written
+# through: it is skipped with a message.
 #
 # Re-run after moving the checkout or changing the templates. Idempotent.
 #
 # NOTE for agents and future edits: ASCII only in this file - it can run
 # under Windows PowerShell 5.1, which chokes on BOM-less non-ASCII.
+
+param(
+    [switch]$SkipVenv,
+    [switch]$SkipChecklist
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -28,6 +43,34 @@ $copilotHome = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $en
 $hooksDir = Join-Path $copilotHome 'hooks'
 $stateDir = Join-Path $hooksDir 'state'
 $skillsDir = Join-Path $copilotHome 'skills'
+$agentsSkillsDir = Join-Path (Join-Path $env:USERPROFILE '.agents') 'skills'
+
+# The link target when $path is a reparse point that does not point into this
+# checkout, else $null: writing through it would land in another tree.
+function Get-ForeignLink([string]$path) {
+    $item = Get-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+    if (-not $item -or -not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { return $null }
+    $target = [string]($item.Target | Select-Object -First 1)
+    if ($target -and $target.StartsWith($repo, [StringComparison]::OrdinalIgnoreCase)) { return $null }
+    if (-not $target) { return '(unresolved link)' }
+    return $target
+}
+
+$copilotHomeLink = Get-ForeignLink $copilotHome
+if ($copilotHomeLink) {
+    Write-Host "[skip] Copilot home is a link into another tree, nothing written -> $copilotHome ($copilotHomeLink)"
+    exit 0
+}
+
+$sharedWhy = $null
+foreach ($candidate in @($skillsDir, $agentsSkillsDir)) {
+    $link = Get-ForeignLink $candidate
+    if ($link) { $sharedWhy = "$candidate -> $link"; break }
+}
+$shared = [bool]$sharedWhy
+if ($shared) {
+    Write-Host "[note] shared machine (the full fleet runs here too): $sharedWhy"
+}
 
 # --- resolve a real python.exe (avoid the WindowsApps alias, which can hang
 # --- when spawned non-interactively from a hook)
@@ -45,26 +88,40 @@ if (-not $python) {
     Write-Error 'No usable python.exe found (only the WindowsApps alias). Install Python and re-run.'
 }
 
-New-Item -ItemType Directory -Force -Path $hooksDir, $stateDir | Out-Null
-
 # --- render each hook config with absolute paths (forward slashes keep the
 # --- JSON free of escaping headaches). session-state feeds the Board; chief-guard
 # --- is the chief's handover, turn-end holds and ask_user deny.
-$hookTemplates = [ordered]@{
-    'session-state.template.json' = 'fleet-config-lite-session-state.json'
-    'chief-guard.template.json'   = 'fleet-config-lite-chief-guard.json'
-}
-foreach ($name in $hookTemplates.Keys) {
-    $template = Get-Content (Join-Path $repo "hooks\$name") -Raw
-    $rendered = $template.Replace('{{PYTHON}}', ($python -replace '\\', '/')).Replace('{{REPO}}', ($repo -replace '\\', '/'))
-    # Hyphens only in the filename: Copilot CLI 1.0.70 silently ignores hook
-    # files with more than one dot in the name (verified live).
-    $target = Join-Path $hooksDir $hookTemplates[$name]
-    # WriteAllText, not Set-Content: under Windows PowerShell 5.1 Set-Content's
-    # utf8 writes a BOM, and Copilot CLI 1.0.70 silently ignores BOM'd hook
-    # configs (verified live). WriteAllText emits BOM-less UTF-8 on every PS.
-    [System.IO.File]::WriteAllText($target, $rendered)
-    Write-Host "[ok] hook config -> $target"
+$hooksLink = Get-ForeignLink $hooksDir
+if ($hooksLink) {
+    Write-Host "[skip] hooks folder is a link into another tree, no hook written -> $hooksDir ($hooksLink)"
+} else {
+    New-Item -ItemType Directory -Force -Path $hooksDir, $stateDir | Out-Null
+    $scope = if ($shared) { ' --lite-sessions-only' } else { '' }
+    $hookTemplates = [ordered]@{
+        'session-state.template.json' = 'fleet-config-lite-session-state.json'
+        'chief-guard.template.json'   = 'fleet-config-lite-chief-guard.json'
+    }
+    foreach ($name in $hookTemplates.Keys) {
+        # Hyphens only in the filename: Copilot CLI 1.0.70 silently ignores hook
+        # files with more than one dot in the name (verified live).
+        $target = Join-Path $hooksDir $hookTemplates[$name]
+        $targetLink = Get-ForeignLink $target
+        if ($targetLink) {
+            Write-Host "[skip] hook config is a link into another tree -> $target ($targetLink)"
+            continue
+        }
+        $template = Get-Content (Join-Path $repo "hooks\$name") -Raw
+        $rendered = $template.Replace('{{PYTHON}}', ($python -replace '\\', '/')).Replace('{{REPO}}', ($repo -replace '\\', '/')).Replace('{{SCOPE}}', $scope)
+        # WriteAllText, not Set-Content: under Windows PowerShell 5.1 Set-Content's
+        # utf8 writes a BOM, and Copilot CLI 1.0.70 silently ignores BOM'd hook
+        # configs (verified live). WriteAllText emits BOM-less UTF-8 on every PS.
+        [System.IO.File]::WriteAllText($target, $rendered)
+        Write-Host "[ok] hook config -> $target"
+    }
+    if ($shared) {
+        Write-Host '     session-state records only sessions app-launcher-lite launched (--lite-sessions-only);'
+        Write-Host '     chief-guard acts only for lite''s chief and its lanes'
+    }
 }
 Write-Host "     python      -> $python"
 
@@ -85,7 +142,11 @@ $instructionsSource = Join-Path $repo 'global-instructions.md'
 $instructionsTarget = Join-Path $copilotHome 'copilot-instructions.md'
 $instructionsMarker = '<!-- fleet-config-lite: managed copy of global-instructions.md; install.ps1 overwrites this file -->'
 $skipInstructions = $false
-if (Test-Path $instructionsTarget) {
+if ($shared) {
+    # A global instructions file changes every Copilot session on the PC, not only lite's.
+    Write-Host "[skip] instructions not linked on a shared machine -> $instructionsTarget"
+    $skipInstructions = $true
+} elseif (Test-Path $instructionsTarget) {
     $item = Get-Item $instructionsTarget -Force
     if ($item.LinkType -eq 'SymbolicLink') {
         $ours = $item.Target -like "*$instructionsSource*"
@@ -133,7 +194,11 @@ if (-not $skipInstructions) {
 # machine loads the lite copy beside the full one. A reparse-point skills dir
 # is therefore never written into.
 $skillsItem = Get-Item -LiteralPath $skillsDir -Force -ErrorAction SilentlyContinue
-if ($skillsItem -and ($skillsItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+if ($shared) {
+    # Junctioned skills appear in every Copilot session, next to the full fleet's own.
+    Write-Host "[skip] skills not installed on a shared machine -> $skillsDir"
+    $skillSources = @()
+} elseif ($skillsItem -and ($skillsItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
     Write-Host "[skip] skills dir is a link into another tree, not touched -> $skillsDir ($($skillsItem.Target))"
     $skillSources = @()
 } else {
@@ -159,6 +224,47 @@ $skillSources | ForEach-Object {
         Copy-Item $_.FullName $link -Recurse
         Write-Host "[ok] skill copied   -> $link (junction unavailable)"
     }
+}
+
+# --- this checkout's venv: app-launcher-lite runs chief_managed.py and the owner
+# --- check through .venv\Scripts\python.exe and skips them when it is missing.
+# --- The helpers are stdlib only, so the venv holds nothing but the interpreter.
+$venvPython = Join-Path $repo '.venv\Scripts\python.exe'
+if ($SkipVenv) {
+    Write-Host '[skip] venv (-SkipVenv)'
+} elseif (Test-Path $venvPython) {
+    Write-Host "[ok] venv exists -> $venvPython"
+} else {
+    & $python -m venv (Join-Path $repo '.venv')
+    if (Test-Path $venvPython) { Write-Host "[ok] venv created -> $venvPython" } else { Write-Host '[missing] venv could not be created' }
+}
+
+# --- fresh-machine checklist: every line is ok, missing or unknown, never assumed
+if (-not $SkipChecklist) {
+    Write-Host ''
+    Write-Host 'Fresh-machine checklist:'
+    $copilot = Get-Command copilot -ErrorAction SilentlyContinue
+    if ($copilot) {
+        $version = (& $copilot.Source --version 2>$null | Select-Object -First 1)
+        Write-Host "[ok] Copilot CLI -> $version"
+    } else {
+        Write-Host '[missing] Copilot CLI: install it (winget install GitHub.Copilot), then run copilot login'
+    }
+    $glab = Get-Command glab -ErrorAction SilentlyContinue
+    if (-not $glab) {
+        Write-Host '[missing] glab: install it (winget install GLab.GLab), then run glab auth login'
+    } else {
+        & $glab.Source auth status *> $null
+        if ($LASTEXITCODE -eq 0) { Write-Host '[ok] glab signed in' } else { Write-Host '[missing] glab is not signed in: run glab auth login' }
+    }
+    if (Test-Path $venvPython) { Write-Host '[ok] venv' } else { Write-Host '[missing] venv: re-run without -SkipVenv' }
+    try {
+        Invoke-WebRequest -Uri 'http://127.0.0.1:8466/sessions' -UseBasicParsing -TimeoutSec 2 | Out-Null
+        Write-Host '[ok] app-launcher-lite session-host answers on :8466'
+    } catch {
+        Write-Host '[unknown] app-launcher-lite session-host not reachable on :8466 (start its tray)'
+    }
+    Write-Host '[next] restart any running Copilot CLI session, then run: python scripts\copilot_probe.py run --live'
 }
 
 Write-Host ''

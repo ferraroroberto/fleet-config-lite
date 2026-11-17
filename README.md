@@ -37,7 +37,30 @@ powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1
 
 Then restart any running Copilot CLI session (hook configs load at startup).
 
-On a machine that also runs the full fleet-config, `~/.copilot/skills` is often itself a junction into that repo's `skills/`. The installer then skips the skills step whole (`[skip] skills dir is a link into another tree`) instead of writing links into the other repo; the hooks are still installed.
+### Fresh machine
+
+1. Install Python 3.11+ (a real install, not the WindowsApps alias) and GitHub Copilot CLI (`winget install GitHub.Copilot`), then run `copilot login`.
+2. Install `glab` (`winget install GLab.GLab`) and run `glab auth login` against your GitLab host.
+3. Clone this repo and app-launcher-lite side by side (the launcher finds this checkout as its sibling `fleet-config-lite`).
+4. Run `install.ps1`. It renders the two hook configs, links the instructions and skills, creates this checkout's `.venv` (the launcher runs the chief helpers through `.venv\Scripts\python.exe`), and ends with a checklist. Each line is `[ok]`, `[missing]` with the command that fixes it, or `[unknown]`: Copilot CLI and its version, `glab` and its sign-in, the venv, and whether app-launcher-lite's session-host answers on :8466.
+5. Restart any running Copilot session (hook configs load at startup), then run `python scripts\copilot_probe.py run --live` and record the manual items you check.
+6. In app-launcher-lite's Settings > Chief, turn the doorbell on: it is the chief's only wake path for lane events.
+
+`install.ps1 -SkipVenv -SkipChecklist` skips the last two steps (the tests use it).
+
+### A machine that also runs the full fleet
+
+If `~/.copilot/skills` or `~/.agents/skills` is a link into another tree, the full fleet runs on this PC too. The installer prints `[note] shared machine` and writes nothing that would change any other session:
+
+| User-scope path | Shared machine | Dedicated machine |
+|---|---|---|
+| `~/.copilot/hooks/fleet-config-lite-session-state.json` | written with `--lite-sessions-only`: the hook records a session only when app-launcher-lite's own session-host (`:8466`) lists its launcher id, and returns before any write otherwise | written; records every Copilot session |
+| `~/.copilot/hooks/fleet-config-lite-chief-guard.json` | written; it acts only for lite's chief and the lanes in lite's registry and returns at once for every other session | written |
+| `~/.copilot/hooks/state/` | created if missing; lite's own state files live here | created if missing |
+| `~/.copilot/copilot-instructions.md` | skipped (a global instructions file reaches every Copilot session) | linked, only when free or already ours |
+| `~/.copilot/skills/<name>` | skipped (lite skills would appear beside the full fleet's) | junctioned, never over a skill that isn't ours |
+
+A user-scope target that is itself a link into another tree (the Copilot home, its `hooks` folder, a hook config, the skills folder) is never written through: it is skipped with a `[skip] ... is a link into another tree` line. The repo-local `.venv` is created either way.
 
 Requirements: Windows, Python 3.11+ on a real install path (the WindowsApps alias is rejected), GitHub Copilot CLI ≥ 1.0.70, `glab` authenticated against your GitLab host for the skills.
 

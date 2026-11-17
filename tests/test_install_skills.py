@@ -54,23 +54,31 @@ class InstallSkillsTests(unittest.TestCase):
         shutil.copy2(REPO / "global-instructions.md", self.repo / "global-instructions.md")
         (self.repo / "skills" / "demo").mkdir(parents=True)
         (self.repo / "skills" / "demo" / "SKILL.md").write_text("demo", encoding="utf-8")
-        self.home = self.root / "copilot-home"
-        self.home.mkdir()
+        self.profile = self.root / "profile"
+        self.home = self.profile / ".copilot"
+        self.home.mkdir(parents=True)
 
     def install(self) -> subprocess.CompletedProcess:
-        env = {**os.environ, "COPILOT_HOME": str(self.home)}
+        env = {**os.environ, "COPILOT_HOME": str(self.home), "USERPROFILE": str(self.profile)}
         return subprocess.run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-                               str(self.repo / "install.ps1")], capture_output=True, text=True, timeout=180,
-                              env=env, creationflags=NO_WINDOW)
+                               str(self.repo / "install.ps1"), "-SkipVenv", "-SkipChecklist"],
+                              capture_output=True, text=True, timeout=180, env=env, creationflags=NO_WINDOW)
+
+    def junction(self, link: Path, target: Path) -> None:
+        target.mkdir(parents=True, exist_ok=True)
+        link.parent.mkdir(parents=True, exist_ok=True)
+        made = _ps(f"New-Item -ItemType Junction -Path '{link}' -Target '{target}' | Out-Null")
+        self.assertEqual(made.returncode, 0, made.stderr)
+
+    def hook(self, name: str) -> str:
+        return (self.home / "hooks" / f"fleet-config-lite-{name}.json").read_text(encoding="utf-8")
 
     def test_a_junctioned_skills_dir_is_never_written_through(self) -> None:
         other = self.root / "full-fleet" / "skills"
-        other.mkdir(parents=True)
-        made = _ps(f"New-Item -ItemType Junction -Path '{self.home / 'skills'}' -Target '{other}' | Out-Null")
-        self.assertEqual(made.returncode, 0, made.stderr)
+        self.junction(self.home / "skills", other)
         proc = self.install()
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-        self.assertIn("[skip] skills dir is a link into another tree", proc.stdout)
+        self.assertIn("[skip] skills not installed on a shared machine", proc.stdout)
         self.assertEqual(list(other.iterdir()), [])
 
     def test_a_real_skills_dir_gets_links_and_a_rerun_keeps_the_source(self) -> None:
@@ -80,6 +88,36 @@ class InstallSkillsTests(unittest.TestCase):
         link = self.home / "skills" / "demo"
         self.assertTrue(link.is_junction())
         self.assertEqual((self.repo / "skills" / "demo" / "SKILL.md").read_text(encoding="utf-8"), "demo")
+
+
+    def test_a_dedicated_machine_records_every_session_and_links_everything(self) -> None:
+        proc = self.install()
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn("--lite-sessions-only", self.hook("session-state"))
+        self.assertNotIn("{{SCOPE}}", self.hook("session-state"))
+        self.assertTrue((self.home / "copilot-instructions.md").exists())
+
+    def test_a_shared_machine_changes_nothing_for_other_sessions(self) -> None:
+        other = self.root / "full-fleet" / "skills"
+        self.junction(self.profile / ".agents" / "skills", other)
+        proc = self.install()
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("[note] shared machine", proc.stdout)
+        self.assertIn("--lite-sessions-only", self.hook("session-state"))
+        self.assertIn("chief_guard.py", self.hook("chief-guard"))
+        self.assertIn("[skip] instructions not linked on a shared machine", proc.stdout)
+        self.assertIn("[skip] skills not installed on a shared machine", proc.stdout)
+        self.assertFalse((self.home / "copilot-instructions.md").exists())
+        self.assertFalse((self.home / "skills" / "demo").exists())
+        self.assertEqual(list(other.iterdir()), [])
+
+    def test_a_linked_hooks_folder_is_never_written_through(self) -> None:
+        other = self.root / "elsewhere" / "hooks"
+        self.junction(self.home / "hooks", other)
+        proc = self.install()
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("[skip] hooks folder is a link into another tree", proc.stdout)
+        self.assertEqual(list(other.iterdir()), [])
 
 
 if __name__ == "__main__":

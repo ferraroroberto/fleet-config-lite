@@ -18,6 +18,18 @@ Subcommands
       Append one line to `chief-journal.jsonl` for the Board's "since you
       last looked" card (`chief/journal.py`).
 
+  inbox [--count [--older-than SECS]] [--stale-after SECS]
+      Mailbox v2 reader (`chief/mailbox.py`): re-offers claims unacked for
+      `--stale-after` (default 900 s), then claims every pending event into
+      `chief-inbox/.claimed/` and prints the batch (`INBOX=events n=N ...`, one
+      block per event, then `ACK=`), or `INBOX=empty`. Nothing is deleted until
+      `ack`. `--count` claims nothing and prints `PENDING=<n>`
+      (`PENDING=unknown` and exit 1 when the directory can't be listed).
+
+  ack <id> [<id> ...]
+      Retires handled events. `ACKED=<n>`, plus `ACK_MISSING=<id>` and exit 1
+      for an id with no file.
+
 stdout carries the `KEY=value` result lines the chief acts on; breadcrumbs go to
 stderr. Exit 2 with `ERROR: ...` on stderr for a refused write.
 """
@@ -31,7 +43,7 @@ from pathlib import Path
 from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from chief import journal, plan_cli  # noqa: E402
+from chief import journal, lite_commands, plan_cli  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -40,6 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="cmd", required=True)
     journal.add_parser(sub)
     plan_cli.add_cli(sub.add_parser("plan", help="read or change the chief's plan"))
+    lite_commands.add_mailbox_parsers(sub)
     return parser
 
 

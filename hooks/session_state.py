@@ -39,6 +39,7 @@ from typing import Any, Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _lib  # noqa: E402
+import chief_inbox  # noqa: E402
 
 STATE_FILENAME = "sessions-state.json"
 
@@ -225,7 +226,11 @@ def apply_event(payload: Dict[str, Any], event: str) -> None:
 def main() -> None:
     try:
         event = sys.argv[1] if len(sys.argv) > 1 else ""
-        apply_event(_lib.read_stdin_json(), event)
+        payload = _lib.read_stdin_json()
+        apply_event(payload, event)
+        # The chief's mailbox rides the same invocation: a chief-managed worker's
+        # turn end or exit becomes one event file (no-op for every other session).
+        chief_inbox.record_safely(payload, event)
     except Exception:  # noqa: BLE001 — state is advisory; never disturb the session
         pass
     _lib.allow()

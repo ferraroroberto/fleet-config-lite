@@ -1,8 +1,13 @@
 {
   "version": 1,
   "entries": [
+    {"key": "skills/_lib/chief/digest.py", "names": ["format_board_digest", "format_occupancy"]},
+    {"key": "skills/_lib/chief/mailbox.py", "names": ["resolve_wake_mode"]},
+    {"key": "skills/_lib/chief/rails.py", "names": ["alive_worker_count", "find_chief_session", "find_session_status", "fleet_job_refusal", "is_fleet_wide_brief", "owner_check_refusal", "parse_issue_ref", "refuse_dispatch", "repo_occupancy", "resolve_cap_scope", "resolve_repo_path", "resolve_session_id", "running_fleet_jobs", "session_holds_live_pty"]},
+    {"key": "skills/_lib/fleet_core/fleet_repo_scan.py", "names": ["fleet_repo_tables", "is_linked_worktree", "iter_fleet_repos"]},
     {"key": "skills/_lib/fleet_core/runtime_files.py", "names": ["connect_read_only", "connect_sqlite", "copy_file", "copy_tree", "copy_with_metadata", "file_handler"]},
-    {"key": "skills/_lib/git_run.py", "names": ["run_gh", "run_git_bytes", "run_git_checked"]},
+    {"key": "skills/_lib/git_run.py", "names": ["run_gh", "run_git_bytes"]},
+    {"key": "skills/_lib/owner_check/block.py", "names": ["format_block", "latest_block", "open_kinds", "vague_action"]},
     {"key": "skills/_lib/worktree_residue.py", "names": ["classify_orphan", "dir_facts", "unregistered_siblings"]}
   ]
 }

@@ -53,6 +53,18 @@ Copilot's `agentStop` payload carries no reply text, only `transcriptPath`, the 
 
 Not carried: upstream skips a nested print-mode child (a `claude -p` a lane starts) that inherits the lane's `APP_LAUNCHER_SESSION_ID`. Copilot exposes no entrypoint marker for that, so a `copilot -p` run from inside a chief-managed lane still writes events as the lane. The chief dedupes by `id` and reads the exchange, so the cost is a spurious wake.
 
+## Guard hooks
+
+`hooks/chief_guard.py` is registered for three Copilot events through `hooks/chief-guard.template.json`, which `install.ps1` renders next to the session-state config. All three behaviours were verified live on CLI 1.0.112 by `scripts/copilot_probe.py`: `sessionStart` `additionalContext` reaches the model, `agentStop` `decision: block` forces another turn, and `preToolUse` `permissionDecision: deny` stops the tool call. Each answer is emitted in both Copilot's own fields and the Claude Code `hookSpecificOutput` shape Copilot also reads.
+
+- **`sessionStart`**, chief only: the handover log `chief-handover.md` comes back as `additionalContext` (its last 24,000 characters), so a boot, a resume or a compaction never starts without the chief's intent. No log means a one-line note to start one.
+- **`agentStop`**, chief only, and never while Copilot is already continuing after a hold (`stop_hook_active`). It holds the turn end with a reason naming the next command, in this order, each at most once per 10 minutes: `compact-due` prints `COMPACT_DUE percent=..` (not when `self-compact` already queued one); `slots-idle` reports free worker slots while plan rows wait as `queued` and no `plan ask --id slots-idle` covers it; chief-managed lanes are `working` while `wake` says the launcher's doorbell is not on, so their events would wake nobody. An unknown reading never holds.
+- **`preToolUse`**: `ask_user` is denied for the chief and for every chief-managed lane, because it renders only in that session's terminal. Every other tool, and every other session, passes untouched.
+
+The chief is the launcher session whose working directory is a fleet-config-lite checkout and whose id `chief_ops.py chief-sid` names. Every other session is allowed before any subprocess runs. A fact the guard cannot read allows the action and is logged to stderr.
+
+`chief_ops.py wake` prints `WAKE=doorbell ...` or `WAKE=waiter doorbell=off|unknown` from the launcher's `chief_doorbell` switch (`chief/mailbox.py`'s `resolve_wake_mode`, verbatim). The lite chief has no background waiter, because a background shell waking the agent is still an unknown probe item. So with the doorbell off, only Roberto's own messages wake it, which is why the guard holds when lanes are working. `chief_ops.py slots-idle` prints `SLOTS_IDLE=<n> free=<f> queued=<q>`, or `unknown` with a reason, plus `SLOTS_COVERED=slots-idle` when that question is open.
+
 ## Compaction
 
 `chief_ops.py context [<sid>]` reads a session's context-window use where Copilot records it: the newest `session.usage_record` in the session's `events.jsonl`, as `round(100 * inputTokens / maxPromptTokens)`. The launcher session id is joined to Copilot's session through the `sessions-state.json` row the hook writes (`launcher_session_id`, newest `updated_at`), and the log is that row's `transcript_path`, else `~/.copilot/session-state/<id>/events.jsonl`. app-launcher-lite's own `/context` endpoint is not used, because it reads a statusline Copilot does not print. If any step can't be read (no row, no log, no usage record, a missing field), the reading is `percent=unknown` with the reason, never 0.

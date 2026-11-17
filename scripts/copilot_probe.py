@@ -42,7 +42,7 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "_lib"))
 import runtime_files  # noqa: E402
@@ -53,6 +53,10 @@ STATUSES = ("verified", "unsupported", "unknown")
 DEFAULT_REPORT = Path.home() / ".copilot" / "hooks" / "state" / "copilot-probe.json"
 SESSION_STATE_DIR = Path.home() / ".copilot" / "session-state"
 HOOK_EVENTS = ("sessionStart", "userPromptSubmitted", "agentStop", "sessionEnd")
+# The second live run also installs preToolUse, which denies every tool call.
+DENY_EVENTS = HOOK_EVENTS + ("preToolUse",)
+DENY_PROMPT = ("Run this exact shell command, then reply DONE: "
+               "python -c \"open('ran.txt','w').write('x')\"")
 # One live request: the CLI's own startup plus two model turns (the forced one included).
 LIVE_TIMEOUT_SECONDS = 300
 STATIC_TIMEOUT_SECONDS = 30
@@ -69,6 +73,7 @@ ITEMS: Dict[str, tuple] = {
     "session_start_additional_context": ("sessionStart additionalContext reaches the model", "live"),
     "agent_stop_block": ("agentStop decision: block forces another turn", "live"),
     "usage_record_context": ("events.jsonl session.usage_record carries inputTokens and maxPromptTokens", "live"),
+    "pre_tool_use_deny": ("preToolUse permissionDecision deny stops the tool call", "live"),
     "hooks_fire_interactive": ("an interactive TUI session fires the four hooks", "manual"),
     "resume_session_id_keeps_context": ("-p --session-id resumes with context kept", "manual"),
     "composer_keys_doorbell": ("composer keys Backspace, Ctrl-U, Enter clear and submit the doorbell line", "manual"),
@@ -174,7 +179,8 @@ def cli_version_of(results: Dict[str, Dict[str, str]]) -> str:
     return row.get("evidence", "") if row.get("status") == "verified" else "unknown"
 
 
-def write_probe_folder(folder: Path, context_word: str, block_word: str) -> None:
+def write_probe_folder(folder: Path, context_word: str, block_word: str,
+                       events: tuple = HOOK_EVENTS, deny: bool = False) -> None:
     """Lay out the throwaway trusted folder: a git repo with logging repo-level hooks."""
     script = Path(__file__).resolve().as_posix()
     python = Path(sys.executable).as_posix()
@@ -182,7 +188,7 @@ def write_probe_folder(folder: Path, context_word: str, block_word: str) -> None
         event: [{"type": "command", "timeoutSec": 20,
                  "powershell": f"& '{python}' '{script}' hook {event} --dir '{folder.as_posix()}'",
                  "bash": f"'{python}' '{script}' hook {event} --dir '{folder.as_posix()}'"}]
-        for event in HOOK_EVENTS
+        for event in events
     }
     runtime_files.make_dirs(folder / ".github" / "hooks")
     runtime_files.save_text(folder / ".github" / "hooks" / "probe.json",
@@ -190,6 +196,8 @@ def write_probe_folder(folder: Path, context_word: str, block_word: str) -> None
     runtime_files.save_text(folder / "context.txt", f"The probe word is {context_word}.")
     runtime_files.save_text(folder / "block.txt",
                             f"Before stopping, reply with exactly this word on its own line: {block_word}")
+    if deny:
+        runtime_files.save_text(folder / "deny.txt", "Denied by the capability probe.")
     _run(["git", "init", "-q", str(folder)], STATIC_TIMEOUT_SECONDS)
 
 
@@ -207,6 +215,12 @@ def hook_main(event: str, folder: Path, stdin_text: str) -> str:
         # Both spellings: Copilot's own and the Claude Code shape it also reads.
         return json.dumps({"additionalContext": text,
                            "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}})
+    if event == "preToolUse" and (folder / "deny.txt").exists():
+        reason = (folder / "deny.txt").read_text(encoding="utf-8")
+        # Both spellings again: Copilot's own and the Claude Code shape it also reads.
+        return json.dumps({"permissionDecision": "deny", "permissionDecisionReason": reason,
+                           "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                                  "permissionDecisionReason": reason}})
     if event == "agentStop" and (folder / "block.txt").exists():
         stops = sum(1 for line in log.read_text(encoding="utf-8").splitlines() if '"agentStop"' in line)
         if stops == 1:
@@ -257,7 +271,8 @@ def classify_live(events: List[Dict[str, Any]], output: str, context_word: str, 
     missing = [e for e in HOOK_EVENTS if e not in fired]
     if not ran:
         reason = "the copilot -p run did not complete"
-        return {k: _result("unknown", reason) for k, (_q, m) in ITEMS.items() if m == "live"}
+        return {k: _result("unknown", reason) for k, (_q, m) in ITEMS.items()
+                if m == "live" and k != "pre_tool_use_deny"}
     results["hooks_fire_prompt_mode"] = (_result("verified", "all four events logged") if not missing
                                          else _result("unknown", f"not logged: {', '.join(missing)}"))
     if "sessionStart" not in fired:
@@ -281,23 +296,47 @@ def classify_live(events: List[Dict[str, Any]], output: str, context_word: str, 
     return results
 
 
-def live_checks(copilot: str, model: str = "") -> Dict[str, Dict[str, str]]:
-    context_word = f"PROBE{uuid.uuid4().hex[:8].upper()}"
-    block_word = f"BLOCK{uuid.uuid4().hex[:8].upper()}"
-    folder = Path(tempfile.mkdtemp(prefix="copilot-probe-"))
-    write_probe_folder(folder, context_word, block_word)
-    argv = [copilot, "-p", "Reply with the probe word from your context, or NONE if you have none.",
-            "--no-ask-user", "--no-auto-update"]
+def classify_deny(events: List[Dict[str, Any]], tool_ran: bool, ran: bool) -> Dict[str, str]:
+    """The `pre_tool_use_deny` result from the deny run's hook log and the marker file."""
+    tools = sorted({str(e.get("payload", {}).get("toolName") or "?") for e in events
+                    if e.get("event") == "preToolUse" and isinstance(e.get("payload"), dict)})
+    if tool_ran:
+        return _result("unsupported", f"the denied command still ran (tools seen: {', '.join(tools) or 'none'})")
+    if not tools:
+        return _result("unknown", "preToolUse never fired" if ran else "the copilot -p run did not complete")
+    return _result("verified", f"denied before running; tools seen: {', '.join(tools)}")
+
+
+def _live_run(copilot: str, folder: Path, prompt: str, model: str) -> Tuple[str, bool]:
+    """One `copilot -p` in `folder`; `(stdout+stderr, exited 0)`."""
+    argv = [copilot, "-p", prompt, "--no-ask-user", "--no-auto-update"]
     if model:
         argv += ["--model", model]
     # Exactly "true" trusts the working directory, which is what loads its repo-level hooks.
     env = {**os.environ, "COPILOT_ALLOW_ALL": "true"}
     try:
         proc = _run(argv, LIVE_TIMEOUT_SECONDS, cwd=str(folder), env=env)
-        output, ran = (proc.stdout or "") + (proc.stderr or ""), proc.returncode == 0
+        return (proc.stdout or "") + (proc.stderr or ""), proc.returncode == 0
     except (OSError, subprocess.SubprocessError) as exc:
-        output, ran = str(exc), False
+        return str(exc), False
+
+
+def live_checks(copilot: str, model: str = "") -> Dict[str, Dict[str, str]]:
+    context_word = f"PROBE{uuid.uuid4().hex[:8].upper()}"
+    block_word = f"BLOCK{uuid.uuid4().hex[:8].upper()}"
+    folder = Path(tempfile.mkdtemp(prefix="copilot-probe-"))
+    write_probe_folder(folder, context_word, block_word)
+    output, ran = _live_run(copilot, folder, "Reply with the probe word from your context, or NONE if you have none.",
+                            model)
     results = classify_live(read_events(folder), output, context_word, block_word, ran)
+    shutil.rmtree(folder, ignore_errors=True)
+
+    folder = Path(tempfile.mkdtemp(prefix="copilot-probe-deny-"))
+    write_probe_folder(folder, context_word, block_word, events=DENY_EVENTS, deny=True)
+    for name in ("context.txt", "block.txt"):
+        (folder / name).unlink()
+    _output, ran = _live_run(copilot, folder, DENY_PROMPT, model)
+    results["pre_tool_use_deny"] = classify_deny(read_events(folder), (folder / "ran.txt").exists(), ran)
     shutil.rmtree(folder, ignore_errors=True)
     return results
 

@@ -31,6 +31,7 @@ import os
 import sys
 import tempfile
 import time
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -223,9 +224,40 @@ def apply_event(payload: Dict[str, Any], event: str) -> None:
     _write_rows(path, kept)
 
 
+# On a machine that also runs the full fleet the installer passes this flag, so the
+# hook records only sessions app-launcher-lite itself launched (see lite_session).
+LITE_SESSIONS_ONLY_FLAG = "--lite-sessions-only"
+# app-launcher-lite's session-host list; the env var overrides it for another port.
+LITE_SESSION_HOST_ENV = "FLEET_LITE_SESSION_HOST"
+DEFAULT_LITE_SESSION_HOST = "http://127.0.0.1:8466/sessions"
+# A loopback list read; a host slower than this is treated as unreachable.
+LITE_HOST_TIMEOUT_S = 1.5
+
+
+def lite_session(launcher_sid: str) -> bool:
+    """True only when app-launcher-lite's session-host lists `launcher_sid`.
+
+    Any failure (no id, host down, bad reply) is False: in shared mode an
+    unestablished session is not recorded, so nothing is written for it.
+    """
+    if not launcher_sid:
+        return False
+    url = os.environ.get(LITE_SESSION_HOST_ENV, "").strip() or DEFAULT_LITE_SESSION_HOST
+    try:
+        with urllib.request.urlopen(url, timeout=LITE_HOST_TIMEOUT_S) as resp:  # noqa: S310 -- loopback list
+            data = json.loads(resp.read().decode("utf-8"))
+    except (OSError, ValueError):
+        return False
+    rows = data.get("sessions") if isinstance(data, dict) else data
+    return any(isinstance(r, dict) and r.get("session_id") == launcher_sid for r in rows or [])
+
+
 def main() -> None:
     try:
         event = sys.argv[1] if len(sys.argv) > 1 else ""
+        if LITE_SESSIONS_ONLY_FLAG in sys.argv[2:] and not lite_session(
+                os.environ.get("APP_LAUNCHER_SESSION_ID", "").strip()):
+            _lib.allow()
         payload = _lib.read_stdin_json()
         apply_event(payload, event)
         # The chief's mailbox rides the same invocation: a chief-managed worker's

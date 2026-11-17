@@ -282,6 +282,7 @@ class HookCommandUtf8Tests(unittest.TestCase):
             template["hooks"]["userPromptSubmitted"][0]["powershell"]
             .replace("{{PYTHON}}", Path(sys.executable).as_posix())
             .replace("{{REPO}}", self.REPO.as_posix())
+            .replace("{{SCOPE}}", "")  # a dedicated machine: every session is recorded
         )
         cwd = "C:\\work\\café—中"
         # Raw UTF-8 codepoints, as Copilot sends them: a default json.dumps

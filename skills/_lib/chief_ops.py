@@ -26,6 +26,12 @@ Subcommands
   say <sid> [--file F] [--verify]   one POST of input; `--verify` reports
       DELIVERED / PENDING / STRANDED / UNKNOWN and never resends.
   stop <sid> [--kill]     quit (or kill) a live session.
+  context [<sid>]         `CONTEXT sid=<8> percent=<n>|unknown`, from the session's
+      newest Copilot `session.usage_record` (inputTokens / maxPromptTokens).
+  compact-due             `COMPACT_DUE` / `COMPACT_NOT_DUE` / `COMPACT_OFF` against the
+      Settings threshold; `COMPACT_DUE=unknown` (exit 1) when unreadable.
+  self-compact | lane-compact   queue `/compact <focus>` on the caller's own
+      session behind `chief/compact.py`'s refusals (`COMPACT_QUEUED`).
   verify <repo> --expect mr-open|merged [--branch B]
       `STATUS=CLEAN|DIRTY|UNKNOWN`: a clean checkout plus the lane's GitLab
       merge request open (or merged and back on the default branch).
@@ -65,7 +71,15 @@ from pathlib import Path
 from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from chief import journal, launcher, lite_commands, lite_lanes, lite_verify, plan_cli  # noqa: E402
+from chief import (  # noqa: E402
+    journal,
+    launcher,
+    lite_commands,
+    lite_compact,
+    lite_lanes,
+    lite_verify,
+    plan_cli,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -77,6 +91,7 @@ def build_parser() -> argparse.ArgumentParser:
     lite_commands.add_mailbox_parsers(sub)
     lite_lanes.add_lane_parsers(sub)
     lite_verify.add_parser(sub)
+    lite_compact.add_compact_parsers(sub)
     return parser
 
 

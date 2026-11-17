@@ -54,6 +54,10 @@ class MailboxTests(unittest.TestCase):
         patcher = mock.patch.dict(os.environ, env)
         patcher.start()
         self.addCleanup(patcher.stop)
+        # `inbox` adds the chief's compact-due line from a launcher read; keep it off the network.
+        due = mock.patch("chief.lite_compact.chief_compact_status", return_value=(None, "COMPACT_OFF"))
+        due.start()
+        self.addCleanup(due.stop)
 
     def _events(self) -> list:
         return [json.loads(p.read_text(encoding="utf-8")) for p in sorted(self.inbox.glob("*.json"))]

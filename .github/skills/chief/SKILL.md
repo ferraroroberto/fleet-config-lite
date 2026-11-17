@@ -30,6 +30,7 @@ Never run `git`, `glab` writes, `copilot`, or any repo-mutating command yourself
 | `kind=cap-raised` | Dispatch from the top of your plan queue until `dispatch` refuses or the queue is empty. |
 | `kind=` anything else | Report the event line as printed. Do not act on it. |
 | "Answers from the Board" | Act on each answer, then `plan unwait <id>`. |
+| `COMPACT_DUE percent=...` (printed after `inbox`) | Refresh the handover log and the plan, run `self-compact`, and on `COMPACT_QUEUED` end the turn. On `REFUSED=` follow the reason. `COMPACT_DUE=unknown` means do nothing; never compact on a guess. |
 
 After handling, end the turn (see "Ending a turn").
 
@@ -44,6 +45,10 @@ The Board's "Chief's plan" card renders your plan: lanes, the ordered queue, and
 - Something the plan does not cover: `note "<one short public-safe line>" [--ref <repo>#<N>]`.
 
 A plan command that exits 2 wrote nothing. Read the `ERROR:` line, fix the arguments and rerun.
+
+## The handover log
+
+Keep one handover log at `~/.copilot/hooks/state/chief-handover.md`. It is machine-local, so never treat it as a repo file. Write dense prose about intent, not a Board restate: the current batch, what shipped, what is parked and why, decisions and their reasons, what each lane was last told, and what waits on Roberto. Update it at natural checkpoints and always right before `self-compact`, which refuses when the log or the plan is older than 10 minutes. Live data always wins over the log on facts.
 
 ## Starting a lane
 

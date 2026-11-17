@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 
-from . import mailbox
+from . import launcher, mailbox, rails
 
 
 def cmd_inbox(args: argparse.Namespace) -> int:
@@ -25,6 +25,17 @@ def cmd_inbox(args: argparse.Namespace) -> int:
         return 0
     events, reoffered, dropped = mailbox.claim_mailbox(inbox, stale_after=args.stale_after)
     print(mailbox.format_mailbox_batch(events, reoffered, dropped, stale_after=args.stale_after))
+    # The context check rides the path the chief runs every wake; it is silent
+    # unless due or unknown, and only for the live chief itself.
+    caller = rails.caller_session_id()
+    if caller:
+        from . import (
+            lite_compact,  # deferred: only a launcher session pays for the board read
+        )
+
+        chief, line = lite_compact.chief_compact_status(args.base_url)
+        if chief == caller and not line.startswith(("COMPACT_NOT_DUE", "COMPACT_OFF")):
+            print(line)
     return 0
 
 
@@ -45,6 +56,7 @@ def add_mailbox_parsers(sub: argparse._SubParsersAction) -> None:
                     help="seconds before an unacked claim is re-offered")
     ib.add_argument("--older-than", type=float, default=0.0,
                     help="with --count: count only events that have waited at least this many seconds")
+    ib.add_argument("--base-url", default=launcher.DEFAULT_BASE_URL)
     ib.set_defaults(func=cmd_inbox)
 
     ak = sub.add_parser("ack", help="mailbox v2: retire handled events by id")

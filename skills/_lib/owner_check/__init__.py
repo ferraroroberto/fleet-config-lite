@@ -1,7 +1,11 @@
 """Owner checks: work that needs Roberto's validation, or a step of his before it starts.
 
-Lite: only `block` (the comment-block format and label names) is carried so far;
-it is a byte-identical port. fleet-config's `github`, `rule` and `cli` modules talk
-to `gh` and are not ported, so nothing here imports them and a caller that needs
-them (`chief_plan.owner_label_state`) gets an ImportError, refused before any write.
+The contract is `docs/owner-check.md`. `rule` decides required/none from what an
+issue says and what its PR changed, `block` owns the comment-block format, `github`
+is the only module that talks to `gh`, and `cli` is the command line every skill
+calls. stdlib only, so the package ports to the lite fleet unchanged.
 """
+
+from owner_check.github import list_items
+
+__all__ = ["list_items"]

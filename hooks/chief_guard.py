@@ -139,7 +139,8 @@ def compact_hold(now: float) -> Optional[str]:
 def slots_hold(now: float) -> Optional[str]:
     out = chief_ops("slots-idle")
     line = _line(out, "SLOTS_IDLE=")
-    if not line or _line(out, "SLOTS_COVERED=") or line.startswith("SLOTS_IDLE=0"):
+    value = line[len("SLOTS_IDLE="):].split()[0] if line else ""
+    if not line or _line(out, "SLOTS_COVERED=") or value in ("0", "off"):
         return None
     if _recent("chief-slots-nudge", now):
         return None

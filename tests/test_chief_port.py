@@ -91,11 +91,14 @@ class ChiefOpsTests(unittest.TestCase):
         self.assertEqual(_run("note", "shipped", "--ref", "fleet-config-lite#9")[1].strip(),
                          "NOTE=skipped reason=duplicate")
 
-    def test_owner_kind_is_refused_without_writing(self) -> None:
-        code, out, err = _run("plan", "add", "fleet-config-lite#8", "z", "--status", "parked", "--kind", "owner")
+    def test_owner_kind_is_refused_without_writing_when_the_label_is_unconfirmed(self) -> None:
+        from owner_check import github as forge
+
+        with mock.patch.object(forge, "_glab", side_effect=forge.GhError("glab not installed")):
+            code, out, err = _run("plan", "add", "fleet-config-lite#8", "z", "--status", "parked", "--kind", "owner")
         self.assertEqual(code, 2)
         self.assertEqual(out, "")
-        self.assertIn("ERROR: not available in this checkout", err)
+        self.assertIn("could not confirm fleet-config-lite#8 carries needs-owner", err)
         self.assertFalse((self.state / "chief-plan.json").exists())
 
     def test_invalid_write_is_refused_with_exit_2(self) -> None:

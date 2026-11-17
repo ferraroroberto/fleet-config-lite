@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "band": {"files": 0, "functions": 1},
+  "band": {"files": 1, "functions": 2},
   "root_extras": [],
   "shape_contract": {
     "root_files": ["global-instructions.md"],

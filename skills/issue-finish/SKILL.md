@@ -67,6 +67,33 @@ the chief's Board (`MERGE_ASKED=`).
 
 ### 5. Land
 
+First ask which checkout this is, from the checkout you are finishing:
+`python <base-dir>/../_lib/worktree_claim.py mode <repo>` prints `primary`, `worktree` or
+`UNKNOWN reason=...` (stop; never guess).
+
+**Linked worktree** (`<repo>-wt-<N>`): never check out the default branch here.
+`cd` to the primary repo path, then remove the worktree (the helper strips the
+`.venv` junction before `git worktree remove`) and land the primary:
+
+```
+python <base-dir>/../_lib/worktree_claim.py remove-worktree <repo>-wt-<N>
+python <base-dir>/../_lib/worktree_claim.py land-primary <repo> <N>
+```
+
+Report its one `PRIMARY=` line: `PRIMARY=live` means the merge is live
+locally; `PRIMARY=stale reason=...` means it is not, so say so plainly.
+
+**Primary checkout:** guard before switching:
+`python <base-dir>/../_lib/worktree_claim.py assert-owner <repo> <N>`. `ASSERT_OWNER=refuse`
+→ stop and report. On a pass, land with the steps below, but fast-forward through
+`python <base-dir>/../_lib/untrack_guard.py fast-forward .` instead of `git pull --ff-only`,
+then `python <base-dir>/../_lib/worktree_claim.py release <repo>` and confirm
+`python <base-dir>/../_lib/worktree_claim.py status <repo>` prints `CLAIM=free`.
+
+Either way, clear the Board marker:
+`python <base-dir>/../_lib/active_issue.py remove <checkout> <N>`.
+
+
 Resolve the default branch rather than guessing it — `git symbolic-ref --short
 refs/remotes/origin/HEAD` prints `origin/<branch>`; check out the part after
 `origin/` (fallback `git checkout main || git checkout master`). **Never write

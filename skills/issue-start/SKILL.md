@@ -18,6 +18,28 @@ with zero manual git bookkeeping.
 
 ## Steps
 
+### 0. Claim the repo (first action)
+
+Before reading the issue or any code, from the repo root:
+
+```
+python <base-dir>/../_lib/worktree_claim.py acquire . --issue <N>
+```
+
+Append `--force-worktree` when `APP_LAUNCHER_SESSION_ID` is set (a launcher
+or chief lane never works in the primary checkout, which may be serving a live
+app). `MODE=primary`: work in place, as below. `MODE=worktree`: another session
+owns the primary; skip step 2's checkout (just `git fetch origin`) and in step 3
+create an isolated sibling worktree instead of a branch:
+`python <base-dir>/../_lib/worktree_claim.py setup-worktree <repo> <N> <branch>`, then `cd`
+into the printed `WORKTREE=` path and do all remaining work there. Never
+hand-roll `git worktree add`. Abort after a primary claim → run
+`python <base-dir>/../_lib/worktree_claim.py release <repo>` before stopping.
+
+Once the branch exists, publish it for the Board:
+`python <base-dir>/../_lib/active_issue.py add <checkout> <N> <branch>` (the primary path, or the
+`WORKTREE=` path).
+
 ### 1. Load the issue
 
 `glab issue view <N>` — read title, body, labels. If it doesn't exist, stop.

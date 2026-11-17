@@ -1,12 +1,12 @@
 {
   "version": 1,
   "entries": [
-    {"key": "skills/_lib/chief/launcher.py", "names": ["fetch_chief_settings", "fetch_context"]},
-    {"key": "skills/_lib/chief/mailbox.py", "names": ["resolve_wake_mode"]},
-    {"key": "skills/_lib/fleet_core/fleet_repo_scan.py", "names": ["fleet_repo_tables", "is_linked_worktree", "iter_fleet_repos"]},
-    {"key": "skills/_lib/fleet_core/runtime_files.py", "names": ["connect_read_only", "connect_sqlite", "copy_file", "copy_tree", "copy_with_metadata", "file_handler"]},
-    {"key": "skills/_lib/git_run.py", "names": ["run_gh", "run_git_bytes"]},
+    {"key": "skills/_lib/chief/launcher.py", "names": ["fetch_context"]},
+    {"key": "skills/_lib/fleet_core/fleet_repo_scan.py", "names": ["is_linked_worktree", "iter_fleet_repos"]},
+    {"key": "skills/_lib/fleet_core/fleet_toml.py", "names": ["load_checked", "positive_int", "validate_layout"]},
+    {"key": "skills/_lib/fleet_core/runtime_files.py", "names": ["connect_read_only", "connect_sqlite", "copy_file", "copy_tree", "file_handler"]},
+    {"key": "skills/_lib/git_run.py", "names": ["run_git_bytes"]},
     {"key": "skills/_lib/owner_check/block.py", "names": ["format_block", "latest_block", "open_kinds", "vague_action"]},
-    {"key": "skills/_lib/worktree_residue.py", "names": ["classify_orphan", "dir_facts", "unregistered_siblings"]}
+    {"key": "skills/_lib/worktree_residue.py", "names": ["unregistered_siblings"]}
   ]
 }

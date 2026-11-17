@@ -19,6 +19,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `skills/prompt-audit/` | Capped audit of instruction files (at most 2 repos per run, this repo and its siblings) against the vendors' current prompting guides: `SKILL.md` + byte-identical `rules.md`/`sources.toml` + `audit.py` and its sibling `audit_lint.py` (freshness gate, lint, skip-unchanged ledger, digest; `gh` or `glab`; needs the sibling `skills/_lib/`) — see "The /prompt-audit skill" below |
 | `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported from the private life-os repo (`assets/` byte-for-byte; the scripts differ only in writing through `skills/_lib/runtime_files.py`) |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
+| `scripts/copilot_probe.py` | Re-runnable Copilot CLI capability probe: records each behaviour the chief port relies on as `verified`, `unsupported` or `unknown` per installed CLI version — see "Probing the installed Copilot CLI" below |
 | `scripts/*_ratchet.py`, `.*-ratchet-baseline.json` | Nine vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment, runtime write), test-time only — see "The ratchets" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
@@ -136,9 +137,9 @@ Nine vendored baseline-and-ratchet quality gates run inside `python -m unittest 
 
 Per-ratchet specifics that don't fit the table — the static ratchet's extra prerequisites (ruff + Node's `npx` for `jscpd`), the guarded writer behind the runtime-write ratchet, and the rest — live in [docs/ratchets.md](docs/ratchets.md).
 
-## Copilot hook gotchas (verified live, CLI 1.0.70)
+## Copilot hook gotchas
 
-**Interactive sessions may not fire hooks at all.** On CLI 1.0.70 (probed live on the original dev machine), non-interactive runs (`copilot -p ...`) fire the full sessionStart → userPromptSubmitted → agentStop → sessionEnd sequence, but an interactive TUI session (launched from App Launcher Lite with a browser terminal attached and the TUI painted) fired none of them. This matches open upstream bugs — [interactive sessionStart/End mis-timed](https://github.com/github/copilot-cli/issues/991), [sessionStart doesn't run at CLI startup](https://github.com/github/copilot-cli/issues/2201), [repo-level hooks not firing](https://github.com/github/copilot-cli/issues/1730). The writer here is correct and unit-tested; when a CLI update fixes interactive firing, the Board's session columns light up with no change on this side. Until then the Board degrades as designed: live sessions still appear (session-host presence), with status "unknown" and a "session state unavailable" note. Re-test after every `copilot update`.
+**Interactive firing is version-dependent.** CLI 1.0.70 fired the four hooks only in `-p` runs, not in an interactive TUI session ([interactive sessionStart/End mis-timed](https://github.com/github/copilot-cli/issues/991), [sessionStart doesn't run at CLI startup](https://github.com/github/copilot-cli/issues/2201)); CLI 1.0.105 was observed firing all four in both. The probe below records `-p` firing live and keeps interactive firing as a manual item, `unknown` until someone records it on the installed version. When interactive hooks do not fire, the Board degrades as designed: live sessions still appear (session-host presence), with status "unknown" and a "session state unavailable" note.
 
 The remaining failure modes are **silent** — the session runs fine, the hook just never fires:
 
@@ -147,6 +148,19 @@ The remaining failure modes are **silent** — the session runs fine, the hook j
 - Hook configs load at CLI startup only — restart the session after installing.
 - Payloads carry no event-name field; the config passes the event as `argv[1]`.
 - **No stdin pipe in the hook command.** Copilot runs the `powershell` key under pwsh 7 (CLI 1.0.83). `[Console]::In.ReadToEnd() | python ...` decodes the payload with the console's OEM code page first, garbling any non-ASCII prompt or cwd (`???` in 5.1, cp850 mojibake in pwsh). The template invokes Python directly (`& python session_state.py <event>`), which inherits the raw UTF-8 bytes in both shells; `tests/test_session_state.py` drives the template's own command to keep it that way.
+
+## Probing the installed Copilot CLI
+
+`scripts/copilot_probe.py` keeps one report, `~/.copilot/hooks/state/copilot-probe.json`, of the Copilot behaviours the chief port depends on. Every item is `verified`, `unsupported` or `unknown`; a result recorded on another CLI version drops back to `unknown` (its old status stays as evidence), so re-run it after every `copilot update` and on every new machine.
+
+```powershell
+python scripts\copilot_probe.py run           # static checks only: version and flags, spends nothing
+python scripts\copilot_probe.py run --live    # plus one copilot -p request in a throwaway trusted folder
+python scripts\copilot_probe.py record composer_keys_doorbell verified --evidence "what you saw"
+python scripts\copilot_probe.py report        # print the stored report
+```
+
+The live leg installs repo-level hooks (`.github/hooks/probe.json`) in a temp git folder, trusted for that run through `COPILOT_ALLOW_ALL=true`. They log every event, inject a nonce through `sessionStart` and block the first `agentStop`. One run therefore settles four items: `-p` hook firing, `sessionStart` `additionalContext` reaching the model, `agentStop` `decision: block` forcing another turn, and `session.usage_record` carrying `inputTokens` / `maxPromptTokens` in the session's `events.jsonl`. The interactive-only items (composer keys for the doorbell, a mid-turn `/compact <focus>` running at turn end, `/remote on` from the launcher, a background shell waking the agent, `ask_user` under autopilot, interactive hook firing, `--session-id` resume) need a live TUI and are recorded by hand with `record`.
 
 ## Verifying the hooks live
 

@@ -7,8 +7,29 @@ wherever the format is shared with app-launcher-lite's readers; the state they
 write lives under `~/.copilot/hooks/state/` (`fleet_core/hooks_state.py`,
 override `COPILOT_HOOKS_STATE_DIR`).
 
+Every launcher call goes to app-launcher-lite on `http://127.0.0.1:8465`
+(`--base-url` overrides, loopback only); every forge read goes through `glab`.
+
 Subcommands
 -----------
+  board [--json]          ~12-line Board digest (`chief/digest.py`).
+  sessions [--json]       repo occupancy: the "is this repo busy" read before a dispatch.
+  exchange <sid> [--tail N]   the last assistant text of a live session.
+  issues <repo>#<N> ...   one GitLab state line per ref (`glab issue view`).
+  dispatch <repo> <N> [--mode start|yolo] [--model M] [--effort E] [--brief-file F]
+      Guard-railed `POST /api/board/issues/start`: `rails.refuse_dispatch`
+      (occupied repo, worker cap, unconfirmed yolo) and the `needs-owner` label
+      refuse before the POST (`REFUSED=...`); a spawn the launcher may still be
+      running is `DISPATCH=unconfirmed`, never retried. On success it marks the
+      session chief-managed and prints `DISPATCHED`, `DISPATCH_ID=`.
+  chief-sid               `CHIEF_SID=<sid>|none`.
+  say <sid> [--file F] [--verify]   one POST of input; `--verify` reports
+      DELIVERED / PENDING / STRANDED / UNKNOWN and never resends.
+  stop <sid> [--kill]     quit (or kill) a live session.
+  verify <repo> --expect mr-open|merged [--branch B]
+      `STATUS=CLEAN|DIRTY|UNKNOWN`: a clean checkout plus the lane's GitLab
+      merge request open (or merged and back on the default branch).
+
   plan [--plan-file PATH] show|lane|drop-lane|add|set|move|remove|prune|wait|ask|unwait|clear ...
       The chief's structured plan, `chief-plan.json` format v1 (`chief_plan.py`
       is its only writer; `chief/plan_cli.py` the argv). Each transition is
@@ -39,11 +60,12 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+import urllib.error
 from pathlib import Path
 from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from chief import journal, lite_commands, plan_cli  # noqa: E402
+from chief import journal, launcher, lite_commands, lite_lanes, lite_verify, plan_cli  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -53,6 +75,8 @@ def build_parser() -> argparse.ArgumentParser:
     journal.add_parser(sub)
     plan_cli.add_cli(sub.add_parser("plan", help="read or change the chief's plan"))
     lite_commands.add_mailbox_parsers(sub)
+    lite_lanes.add_lane_parsers(sub)
+    lite_verify.add_parser(sub)
     return parser
 
 
@@ -62,7 +86,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     try:
         return args.func(args)
-    except ValueError as exc:
+    except (ValueError, urllib.error.URLError, TimeoutError) as exc:
+        failure = launcher.transport_failure(exc)
+        if failure is not None:
+            print(failure[0])
+            return failure[1]
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     except ImportError as exc:

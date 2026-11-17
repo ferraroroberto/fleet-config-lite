@@ -16,7 +16,19 @@ python skills\_lib\chief_ops.py note "<one line>" [--kind K] [--ref <repo>#<N>]
 python skills\_lib\chief_ops.py inbox [--count]     # claim pending mailbox events
 python skills\_lib\chief_ops.py ack <id> [<id> ...]  # retire handled events
 python skills\_lib\chief_managed.py mark <sid> <repo> <number>
+python skills\_lib\chief_ops.py board | sessions | chief-sid
+python skills\_lib\chief_ops.py dispatch <repo> <N> [--mode start|yolo] [--model M] [--brief-file F]
+python skills\_lib\chief_ops.py say <sid> --file brief.md --verify
+python skills\_lib\chief_ops.py exchange <sid> | stop <sid> [--kill]
+python skills\_lib\chief_ops.py issues <repo>#<N> ...
+python skills\_lib\chief_ops.py verify <repo> --expect mr-open|merged [--branch B]
 ```
+
+Launcher calls go to app-launcher-lite on `http://127.0.0.1:8465` (`--base-url` overrides; any non-loopback host is refused). A launcher that stays silent prints `UNCONFIRMED=...` and one that refuses the connection prints `UNREACHABLE=...`; neither is folded into a verdict. Forge reads go through `glab` against `<owner>/<repo>` on GitLab (`--owner`, default `ferraroroberto`). When `glab` is missing or signed out, `issues` prints an `error:` row for the ref and `verify` prints `STATUS=UNKNOWN`.
+
+`dispatch` keeps fleet-config's rails verbatim (`chief/rails.py`). It refuses before the POST if the repo is occupied, the worker cap is reached, a yolo is unconfirmed, the issue carries `needs-owner`, or a fleet-wide brief would run while a fleet-wide Job is running. A spawn the launcher may still be running prints `DISPATCH=unconfirmed` and must not be retried. `--model` is a Copilot model id, sent to the launcher as typed.
+
+`verify` is lite's own: the lane ships through a GitLab merge request, so `--expect mr-open` means a clean checkout plus an open merge request from the branch, and `--expect merged` means a clean checkout back on the default branch plus a merged one. It prints the same `STATUS=CLEAN|DIRTY|UNKNOWN`, `BRANCH=` and `REASON=` lines as upstream.
 
 | Subcommand | Writes | Read by (app-launcher-lite) |
 |---|---|---|
@@ -57,8 +69,9 @@ These files are byte-identical copies of `fleet-config`'s `skills/_lib/` at comm
 | `skills/_lib/chief/rails.py` | `8608a2ff8b7f4dbc00224fbaa943d165b2cd8a38e04d725f98c1d1ab3f5638bf` |
 | `skills/_lib/owner_check/block.py` | `bf896b68ba15c6cab78b51e60cb9b5e778130ae87bfbbbffbad501642074e198` |
 | `skills/_lib/fleet_core/fleet_repo_scan.py` | `038aa50e37a105e07dfb4e360d86702804e2ec009cc5b8a6e292416c7b5b656f` |
+| `skills/_lib/chief/steer_delivery.py` | `164f17148fbcc86f4c9ae776f189c4d2bb18c439a85e9d8428f4b8243e7e5dae` |
 
-Lite-specific, not copies: `skills/_lib/chief_ops.py`, which mounts only the subcommands this tree carries; `skills/_lib/chief/lite_commands.py`, its handlers that are not ports; `skills/_lib/owner_check/__init__.py`, which exposes only `block`; `hooks/chief_inbox.py`, the mailbox writer for Copilot's payloads; and `skills/_lib/fleet_core/hooks_state.py`, which differs from upstream only in the Copilot state directory and its override variable. The ported docstrings still name `~/.claude/hooks/state/` and `CLAUDE_HOOKS_STATE_DIR`. Behaviour follows `hooks_state.py`, not that wording.
+Lite-specific, not copies: `skills/_lib/chief_ops.py`, which mounts only the subcommands this tree carries; `skills/_lib/chief/lite_commands.py`, `lite_lanes.py` and `lite_verify.py`, its handlers (`lite_lanes.py` keeps upstream's `chief/commands.py` bodies; only the grokbot line, the Codex catalog and the Telegram escalation are gone); `skills/_lib/chief/launcher.py`, upstream's copy with three seams changed: the lite base URL, `glab` for issue state, and no Codex catalog; `skills/_lib/owner_check/__init__.py`, which exposes only `block`; `hooks/chief_inbox.py`, the mailbox writer for Copilot's payloads; and `skills/_lib/fleet_core/hooks_state.py`, which differs from upstream only in the Copilot state directory and its override variable. The ported docstrings still name `~/.claude/hooks/state/` and `CLAUDE_HOOKS_STATE_DIR`. Behaviour follows `hooks_state.py`, not that wording.
 
 ## Not carried yet
 

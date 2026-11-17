@@ -1,9 +1,8 @@
 {
   "version": 1,
   "entries": [
-    {"key": "skills/_lib/chief/digest.py", "names": ["format_board_digest", "format_occupancy"]},
+    {"key": "skills/_lib/chief/launcher.py", "names": ["fetch_chief_settings", "fetch_context"]},
     {"key": "skills/_lib/chief/mailbox.py", "names": ["resolve_wake_mode"]},
-    {"key": "skills/_lib/chief/rails.py", "names": ["alive_worker_count", "find_chief_session", "find_session_status", "fleet_job_refusal", "is_fleet_wide_brief", "owner_check_refusal", "parse_issue_ref", "refuse_dispatch", "repo_occupancy", "resolve_cap_scope", "resolve_repo_path", "resolve_session_id", "running_fleet_jobs", "session_holds_live_pty"]},
     {"key": "skills/_lib/fleet_core/fleet_repo_scan.py", "names": ["fleet_repo_tables", "is_linked_worktree", "iter_fleet_repos"]},
     {"key": "skills/_lib/fleet_core/runtime_files.py", "names": ["connect_read_only", "connect_sqlite", "copy_file", "copy_tree", "copy_with_metadata", "file_handler"]},
     {"key": "skills/_lib/git_run.py", "names": ["run_gh", "run_git_bytes"]},

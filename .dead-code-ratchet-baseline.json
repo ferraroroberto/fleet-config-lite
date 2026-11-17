@@ -1,4 +1,8 @@
 {
   "version": 1,
-  "entries": []
+  "entries": [
+    {"key": "skills/_lib/fleet_core/runtime_files.py", "names": ["connect_read_only", "connect_sqlite", "copy_file", "copy_tree", "copy_with_metadata", "file_handler"]},
+    {"key": "skills/_lib/git_run.py", "names": ["run_gh", "run_git_bytes", "run_git_checked"]},
+    {"key": "skills/_lib/worktree_residue.py", "names": ["classify_orphan", "dir_facts", "unregistered_siblings"]}
+  ]
 }

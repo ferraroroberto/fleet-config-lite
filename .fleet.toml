@@ -98,6 +98,9 @@ baseline   = ".doc-refs-ratchet-baseline.json"
 [dead_code_ratchet]
 enabled  = true
 baseline = ".dead-code-ratchet-baseline.json"
+# app-launcher-lite loads active_issue.py by path and calls classify_owner (its
+# active-issue claims contract), so the call site is outside this tree.
+allow    = ["skills/_lib/active_issue.py:classify_owner"]
 
 # [conventions_ratchet] -- the scaffold's baseline-and-ratchet stage for fleet conventions
 # one AST rule can check. The unit run (python -m unittest discover -s tests) includes

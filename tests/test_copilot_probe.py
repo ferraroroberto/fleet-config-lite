@@ -123,7 +123,16 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(res["agent_stop_block"]["status"], "unknown")
         failed = cp.classify_live(self._events("sessionStart"), "PW", "PW", "BW", ran=False)
         self.assertTrue(all(r["status"] == "unknown" for r in failed.values()))
-        self.assertEqual({k for k, (_q, m) in cp.ITEMS.items() if m == "live"}, set(failed))
+        # The deny item comes from its own run (classify_deny), not this one.
+        self.assertEqual({k for k, (_q, m) in cp.ITEMS.items() if m == "live"} - {"pre_tool_use_deny"}, set(failed))
+
+    def test_deny_run_classification(self) -> None:
+        seen = [{"event": "preToolUse", "payload": {"toolName": "powershell"}}]
+        self.assertEqual(cp.classify_deny(seen, tool_ran=False, ran=True)["status"], "verified")
+        self.assertEqual(cp.classify_deny(seen, tool_ran=True, ran=True)["status"], "unsupported")
+        self.assertEqual(cp.classify_deny([], tool_ran=False, ran=True)["status"], "unknown")
+        self.assertEqual(cp.classify_deny([], tool_ran=False, ran=False)["evidence"],
+                         "the copilot -p run did not complete")
 
     def test_usage_record_read_from_events_jsonl(self) -> None:
         with tempfile.TemporaryDirectory() as td:

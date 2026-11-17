@@ -1,8 +1,8 @@
 # install.ps1 - wire fleet-config-lite into GitHub Copilot CLI (user scope).
 #
-# 1. Renders hooks/session-state.template.json with this checkout's
-#    absolute path and a resolved Python executable, into
-#    %USERPROFILE%\.copilot\hooks\fleet-config-lite-session-state.json
+# 1. Renders hooks/session-state.template.json and hooks/chief-guard.template.json
+#    with this checkout's absolute path and a resolved Python executable, into
+#    %USERPROFILE%\.copilot\hooks\fleet-config-lite-<name>.json
 #    (user-level hooks are the reliable location: repo-level .github/hooks
 #    did not fire in non-interactive mode on Copilot CLI 1.0.70).
 # 2. Ensures the state directory %USERPROFILE%\.copilot\hooks\state exists.
@@ -45,18 +45,25 @@ if (-not $python) {
 
 New-Item -ItemType Directory -Force -Path $hooksDir, $stateDir | Out-Null
 
-# --- render the hook config with absolute paths (forward slashes keep the
-# --- JSON free of escaping headaches)
-$template = Get-Content (Join-Path $repo 'hooks\session-state.template.json') -Raw
-$rendered = $template.Replace('{{PYTHON}}', ($python -replace '\\', '/')).Replace('{{REPO}}', ($repo -replace '\\', '/'))
-# Hyphens only in the filename: Copilot CLI 1.0.70 silently ignores hook
-# files with more than one dot in the name (verified live).
-$target = Join-Path $hooksDir 'fleet-config-lite-session-state.json'
-# WriteAllText, not Set-Content: under Windows PowerShell 5.1 Set-Content's
-# utf8 writes a BOM, and Copilot CLI 1.0.70 silently ignores BOM'd hook
-# configs (verified live). WriteAllText emits BOM-less UTF-8 on every PS.
-[System.IO.File]::WriteAllText($target, $rendered)
-Write-Host "[ok] hook config -> $target"
+# --- render each hook config with absolute paths (forward slashes keep the
+# --- JSON free of escaping headaches). session-state feeds the Board; chief-guard
+# --- is the chief's handover, turn-end holds and ask_user deny.
+$hookTemplates = [ordered]@{
+    'session-state.template.json' = 'fleet-config-lite-session-state.json'
+    'chief-guard.template.json'   = 'fleet-config-lite-chief-guard.json'
+}
+foreach ($name in $hookTemplates.Keys) {
+    $template = Get-Content (Join-Path $repo "hooks\$name") -Raw
+    $rendered = $template.Replace('{{PYTHON}}', ($python -replace '\\', '/')).Replace('{{REPO}}', ($repo -replace '\\', '/'))
+    # Hyphens only in the filename: Copilot CLI 1.0.70 silently ignores hook
+    # files with more than one dot in the name (verified live).
+    $target = Join-Path $hooksDir $hookTemplates[$name]
+    # WriteAllText, not Set-Content: under Windows PowerShell 5.1 Set-Content's
+    # utf8 writes a BOM, and Copilot CLI 1.0.70 silently ignores BOM'd hook
+    # configs (verified live). WriteAllText emits BOM-less UTF-8 on every PS.
+    [System.IO.File]::WriteAllText($target, $rendered)
+    Write-Host "[ok] hook config -> $target"
+}
 Write-Host "     python      -> $python"
 
 # --- global instructions

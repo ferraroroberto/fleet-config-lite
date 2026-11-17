@@ -17,7 +17,7 @@ docs/layout.md                   this file
 
 ## Folders and subpackages
 
-- `hooks/` — `session_state.py` (sole writer of the sessions state file), `chief_inbox.py` (the chief's mailbox writer it calls), `_lib.py` (payload helpers) and `session-state.template.json`, the hook definition the installer renders with absolute paths.
+- `hooks/` — `session_state.py` (sole writer of the sessions state file), `chief_inbox.py` (the chief's mailbox writer it calls), `chief_guard.py` and `chief-guard.template.json` (the chief's guard hooks), `_lib.py` (payload helpers) and `session-state.template.json`, the hook definition the installer renders with absolute paths.
 - `skills/issue-add`, `issue-start`, `issue-finish`, `issue-yolo`, `quick` — issue-workflow skills, `SKILL.md` only.
 - `skills/_lib/` — `runtime_files.py`, the guarded writer the e2e, learning-log and slides scripts share, and `issue_host.py`, the remote-URL parser, managed-issue marker and gh/glab issue argv the codebase-audit, prompt-audit and learning-log scripts share. It also holds the chief helpers: `chief_ops.py` (the chief's CLI), `chief_plan.py`, `chief_managed.py` and the `chief/` package, with the closure they import (`active_issue.py`, `git_run.py`, `worktree_residue.py`, `no_window.py`, `fleet_core/`, `owner_check/`), byte-identical ports listed in [chief.md](chief.md).
 - `skills/e2e/` — `SKILL.md`, `e2e_route.py` and the vendored `classify_e2e.py`.

@@ -13,6 +13,8 @@
 # 4. Junctions skills/ into %USERPROFILE%\.copilot\skills\<skill> so Copilot
 #    discovers the lite issue skills in every session (falls back to copy if
 #    the junction fails, e.g. on a filesystem without junction support).
+#    Skipped whole when the skills dir is itself a link into another tree
+#    (a full-fleet machine), so nothing is ever written into another repo.
 #
 # Re-run after moving the checkout or changing the templates. Idempotent.
 #
@@ -124,8 +126,21 @@ if (-not $skipInstructions) {
 # setup already provides issue-* skills (e.g. one running the full
 # fleet-config), an existing directory that is not a junction into THIS repo
 # is skipped.
-New-Item -ItemType Directory -Force -Path $skillsDir | Out-Null
-Get-ChildItem -Path (Join-Path $repo 'skills') -Directory | ForEach-Object {
+#
+# The skills dir itself must be a real folder. On a full-fleet machine
+# ~/.copilot/skills is a junction into the full fleet-config's skills/, so a
+# link created "in" it lands inside that other repo and every agent on the
+# machine loads the lite copy beside the full one. A reparse-point skills dir
+# is therefore never written into.
+$skillsItem = Get-Item -LiteralPath $skillsDir -Force -ErrorAction SilentlyContinue
+if ($skillsItem -and ($skillsItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+    Write-Host "[skip] skills dir is a link into another tree, not touched -> $skillsDir ($($skillsItem.Target))"
+    $skillSources = @()
+} else {
+    New-Item -ItemType Directory -Force -Path $skillsDir | Out-Null
+    $skillSources = Get-ChildItem -Path (Join-Path $repo 'skills') -Directory
+}
+$skillSources | ForEach-Object {
     $link = Join-Path $skillsDir $_.Name
     if (Test-Path $link) {
         $item = Get-Item $link -Force
@@ -134,7 +149,8 @@ Get-ChildItem -Path (Join-Path $repo 'skills') -Directory | ForEach-Object {
             Write-Host "[skip] skill exists and is not ours -> $link"
             return
         }
-        Remove-Item $link -Recurse -Force
+        # Delete the link only; Remove-Item -Recurse on a junction can walk into its target.
+        $item.Delete()
     }
     try {
         New-Item -ItemType Junction -Path $link -Target $_.FullName | Out-Null

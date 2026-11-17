@@ -2,6 +2,12 @@
 
 app-launcher-lite carries the launcher side of the fleet chief (the plan and journal cards, the mailbox, the doorbell, the dispatch brief). This repo carries the helper side: the code the chief session runs and the state files the launcher reads. Every state file keeps the full `fleet-config` format byte for byte, so app-launcher-lite's readers parse it unchanged; only the location moves, from `~/.claude/hooks/state/` to `~/.copilot/hooks/state/`.
 
+## The chief skill
+
+`.github/skills/chief/SKILL.md` is the chief's brain. app-launcher-lite spawns the chief session with this checkout as its working directory and types `/chief`. Copilot discovers the skill as a project skill from `.github/skills/`, so it loads only in sessions started here and is not one of the skills `install.ps1` junctions into `~/.copilot/skills/`.
+
+It is written for any model behind Copilot. It gives one table from what woke the chief (a message, the doorbell, a mailbox event kind, the Board's answers) to the verbs to run, plus the rails `dispatch` enforces and those it cannot. It also sets two habits: decide only from `chief_ops.py`'s `KEY=value` lines, with a missing line counted as unknown, and end every turn with a standalone summary and no in-turn waiting, because the launcher's doorbell is the wake path. It names only verbs this checkout carries.
+
 ## Entry point
 
 The chief calls one CLI, `skills/_lib/chief_ops.py`, and acts only on the `KEY=value` lines it prints to stdout. Breadcrumbs go to stderr. A refused write exits 2 with `ERROR: ...` on stderr and leaves the state file as it was.

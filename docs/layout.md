@@ -9,6 +9,7 @@ global-instructions.md           agent-agnostic global instructions the installe
 README.md                        index: install, run, gate, one line per feature
 hooks/                           one module per Copilot hook, the shared payload helpers and the hook definition template the installer renders
 skills/<name>/SKILL.md           one folder per skill; its helpers sit beside it
+.github/skills/chief/SKILL.md    the chief skill, a project skill loaded only in this checkout
 scripts/                         vendored scaffold ratchets, their gate wrappers and copilot_probe.py
 tests/                           stdlib unittest, one file per module under test
 docs/layout.md                   this file

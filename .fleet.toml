@@ -65,7 +65,7 @@ baseline = ".structure-ratchet-baseline.json"
 [instruction_ratchet]
 enabled    = true
 baseline   = ".instruction-ratchet-baseline.json"
-skill_dirs = ["skills"]
+skill_dirs = ["skills", ".github/skills"]
 # `agents_pointer` stays off: it requires an AGENTS.md pointing at a CLAUDE.md, and this repo
 # has neither (the Copilot instructions are global-instructions.md).
 ci_expectations     = true
@@ -85,6 +85,9 @@ repeated_text_words = 12
 enabled    = true
 trees    = true
 baseline   = ".doc-refs-ratchet-baseline.json"
+# Paths that live elsewhere on purpose: the instructions file a sibling repo carries,
+# and the repo-level hook file copilot_probe.py writes into its temp folder.
+allow_refs = [".github/copilot-instructions.md", ".github/hooks/probe.json"]
 
 # [dead_code_ratchet] -- the scaffold's baseline-and-ratchet lint for definitions nothing
 # references. The unit run (python -m unittest discover -s tests) includes

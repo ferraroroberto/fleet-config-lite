@@ -9,7 +9,7 @@ global-instructions.md           agent-agnostic global instructions the installe
 README.md                        index: install, run, gate, one line per feature
 hooks/                           one module per Copilot hook, the shared payload helpers and the hook definition template the installer renders
 skills/<name>/SKILL.md           one folder per skill; its helpers sit beside it
-scripts/                         vendored scaffold ratchets and their gate wrappers
+scripts/                         vendored scaffold ratchets, their gate wrappers and copilot_probe.py
 tests/                           stdlib unittest, one file per module under test
 docs/layout.md                   this file
 ```
@@ -24,7 +24,7 @@ docs/layout.md                   this file
 - `skills/learning-log/` — `SKILL.md` and `gather.py`.
 - `skills/prompt-audit/` — `SKILL.md`, `audit.py` (the entry point), `audit_lint.py` (its pure text and lint layer), `rules.md` and `sources.toml`.
 - `skills/slides/` — `SKILL.md`, `assets/` and `scripts/`.
-- `scripts/` — `static_ratchet.py` and `structure_ratchet.py` (vendored byte-for-byte, never edited here) and `static_ratchet_gate.py`.
+- `scripts/` — `static_ratchet.py` and `structure_ratchet.py` (vendored byte-for-byte, never edited here) and `static_ratchet_gate.py`; `copilot_probe.py`, the Copilot CLI capability probe run by hand after each CLI update.
 
 ## Where new code goes
 

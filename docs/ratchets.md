@@ -43,8 +43,11 @@ No `port` is declared, so ports are not checked.
 
 Every vendored file is declared in `.fleet.toml`'s `[vendored]` table, so its
 unused API is not reported as this repo's own dead code. Hooks and skill
-scripts are plain functions called by name, so no `allow` or
-`entry_decorators` is configured.
+scripts are plain functions called by name, so no `entry_decorators` is
+configured. `allow` lists the names a caller outside this tree uses:
+`classify_owner`, which app-launcher-lite loads by path, and the helpers in the
+byte-identical fleet-config ports (`docs/chief.md`, "Port provenance"), which
+cannot lose a name without failing their hash. The baseline is empty.
 
 ## conventions
 

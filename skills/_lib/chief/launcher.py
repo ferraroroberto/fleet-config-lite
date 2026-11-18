@@ -114,11 +114,6 @@ def fetch_running_fleet_jobs(base_url: str) -> Tuple[Optional[List[str]], Option
         return None, f"{type(exc).__name__}: {exc}"
 
 
-
-def fetch_context(base_url: str, sid: str) -> Dict[str, Any]:
-    return _request(base_url, f"/api/claude-code/sessions/{sid}/context")
-
-
 def fetch_chief_settings(base_url: str) -> Tuple[Optional[Dict[str, Any]], str]:
     """The launcher's `{"auto_compact_threshold": int}` -> `(settings, "")`,
     or `(None, why)` -- a launcher without the endpoint (404) is not the same

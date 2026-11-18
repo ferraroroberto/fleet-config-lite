@@ -103,7 +103,25 @@ enabled  = true
 baseline = ".dead-code-ratchet-baseline.json"
 # app-launcher-lite loads active_issue.py by path and calls classify_owner (its
 # active-issue claims contract), so the call site is outside this tree.
-allow    = ["skills/_lib/active_issue.py:classify_owner"]
+# The other entries are names in byte-identical ports of fleet-config (docs/chief.md,
+# "Port provenance"; tests/test_chief_port.py hashes each file). The port keeps the
+# upstream module whole because deleting a name here would fail that hash, and fleet-config
+# loads these helpers elsewhere in its own tree, which lite does not carry.
+allow    = [
+    "skills/_lib/active_issue.py:classify_owner",
+    "skills/_lib/fleet_core/fleet_repo_scan.py:is_linked_worktree",
+    "skills/_lib/fleet_core/fleet_repo_scan.py:iter_fleet_repos",
+    "skills/_lib/fleet_core/fleet_toml.py:load_checked",
+    "skills/_lib/fleet_core/fleet_toml.py:positive_int",
+    "skills/_lib/fleet_core/fleet_toml.py:validate_layout",
+    "skills/_lib/fleet_core/runtime_files.py:connect_read_only",
+    "skills/_lib/fleet_core/runtime_files.py:connect_sqlite",
+    "skills/_lib/fleet_core/runtime_files.py:copy_file",
+    "skills/_lib/fleet_core/runtime_files.py:copy_tree",
+    "skills/_lib/fleet_core/runtime_files.py:file_handler",
+    "skills/_lib/git_run.py:run_git_bytes",
+    "skills/_lib/worktree_residue.py:unregistered_siblings",
+]
 
 # [conventions_ratchet] -- the scaffold's baseline-and-ratchet stage for fleet conventions
 # one AST rule can check. The unit run (python -m unittest discover -s tests) includes

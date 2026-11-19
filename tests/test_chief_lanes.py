@@ -27,7 +27,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "skills" / "_lib"))
 
 import chief_ops  # noqa: E402
-from chief import launcher, lite_verify  # noqa: E402
+from chief import launcher, lite_lanes, lite_verify  # noqa: E402
 
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
@@ -116,10 +116,30 @@ class DispatchTests(StubbedLauncherCase):
         self.assertEqual(code, 0, out)
         self.assertIn("DISPATCHED session=lane-1 repo=demo issue=7", out)
         dispatch_id = out.split("DISPATCH_ID=")[1].split()[0]
-        self.assertEqual(self.stub.posts, [("/api/board/issues/start",
-                                            {"repo": "demo", "number": 7, "mode": "start", "model": "gpt-6-luna"})])
+        self.assertEqual([(path, {k: v for k, v in body.items() if k != "brief"}) for path, body in self.stub.posts],
+                         [("/api/board/issues/start",
+                           {"repo": "demo", "number": 7, "mode": "start", "model": "gpt-6-luna"})])
         row = json.loads((self.state / "chief-managed.json").read_text(encoding="utf-8"))["lane-1"]
         self.assertEqual((row["repo"], row["number"], row["dispatch_id"]), ("demo", 7, dispatch_id))
+
+    def test_every_dispatch_brief_opens_with_this_checkouts_skills(self) -> None:
+        self.stub.routes["/api/board/issues/start"] = (200, {"session": {"session_id": "lane-1"}})
+        brief = self.state / "brief.md"
+        brief.write_text("Scope: only the docs.", encoding="utf-8")
+        skills = (REPO / "skills").as_posix()
+        for extra, mode, tail in ((), "start", ""), (("--brief-file", str(brief)), "start", "Scope: only the docs."),                 ((("--mode", "yolo", "--yolo-confirmed")), "yolo", ""):
+            self.stub.posts.clear()
+            code, out = _ops("dispatch", "demo", "7", "--base-url", self.stub.url, *extra)
+            self.assertEqual(code, 0, out)
+            sent = self.stub.posts[0][1]["brief"]
+            self.assertTrue(sent.startswith("This is a fleet-config-lite lane on GitLab."), sent)
+            self.assertIn(f"{skills}/issue-{mode}/SKILL.md", sent)
+            self.assertIn(f"{skills}/issue-finish/SKILL.md", sent)
+            self.assertTrue(sent.rstrip().endswith(tail or "denies them)."), sent)
+
+    def test_the_preamble_does_not_make_a_brief_fleet_wide(self) -> None:
+        from chief import rails
+        self.assertFalse(rails.is_fleet_wide_brief(lite_lanes.lane_preamble("start")))
 
     def test_occupied_repo_is_refused_before_any_post(self) -> None:
         self.stub.routes["/api/board"] = (200, {"columns": {"claude_turn": [_card("other", "demo")]}})

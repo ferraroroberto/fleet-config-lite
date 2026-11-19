@@ -19,6 +19,11 @@ reaches the model, ``agentStop`` ``decision: block`` forces another turn, and
   would then wake nobody.
 - ``preToolUse``: deny ``ask_user`` for the chief and for every chief-managed
   lane. It renders only in the session's own terminal, where nobody reads it.
+  Also deny a chief-managed lane's shell call that reaches the full fleet (a ``gh``
+  command, ``notify_complete``, a helper under the Claude Code user-scope skills
+  folder or the full fleet's checkout) and name lite's own skills in the
+  reason, because on a PC that also runs the full fleet ``/issue-start`` can resolve
+  to that fleet's GitHub skill.
 
 Who is the chief: a launcher session (``APP_LAUNCHER_SESSION_ID``) whose working
 directory is a fleet-config-lite checkout and whose id ``chief_ops.py chief-sid``
@@ -29,8 +34,10 @@ treated as fine.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -45,6 +52,19 @@ REPO = Path(__file__).resolve().parent.parent
 CHIEF_OPS = REPO / "skills" / "_lib" / "chief_ops.py"
 CHIEF_DIR_PREFIX = "fleet-config-lite"
 ASK_TOOL = "ask_user"
+SHELL_TOOLS = ("powershell", "bash", "shell")
+# What only the full fleet reaches: the skills folder of its Claude Code user scope and of its own
+# checkout (`fleet-config/`, never this repo's `fleet-config-lite/`), and its completion ping. Its
+# hooks folder is not listed: the full fleet's own preToolUse hook runs from there on every command.
+FULL_FLEET_PATH_RE = re.compile(r"[\\/]\.claude[\\/]skills[\\/]|[\\/]fleet-config[\\/]skills[\\/]", re.IGNORECASE)
+# That same hook rewrites a shell command to `... context_filter_cli.py run ... --encoded <base64>`
+# before this guard runs, so the command the lane typed is the encoded part.
+ENCODED_COMMAND_RE = re.compile(r"--encoded\s+([A-Za-z0-9+/=]+)")
+NOTIFY_RE = re.compile(r"\bnotify_complete\b", re.IGNORECASE)
+# Only a statement that starts with `gh` is a gh command: a commit message or a path that
+# merely contains the letters is not.
+STATEMENT_SPLIT_RE = re.compile(r"&&|\|\||[;|\r\n]")
+GH_STATEMENT_RE = re.compile(r"""^\s*(?:&\s*)?['"]?(?:[^\s'"]*[\\/])?gh(?:\.exe)?['"]?(?:\s|$)""", re.IGNORECASE)
 HANDOVER_FILENAME = "chief-handover.md"
 # The handover is prose the chief wrote for itself; past this it is truncated, newest kept.
 HANDOVER_MAX_CHARS = 24000
@@ -193,12 +213,68 @@ def on_session_start(payload: Dict[str, Any], sid: str) -> Optional[Dict[str, An
             "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}}
 
 
+def _unwrapped(command: str) -> str:
+    """The command a lane typed, when another hook has rewritten it to a wrapper with `--encoded`."""
+    match = ENCODED_COMMAND_RE.search(command)
+    if not match:
+        return command
+    try:
+        return base64.b64decode(match.group(1), validate=True).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        return command
+
+
+def foreign_command(payload: Dict[str, Any]) -> Optional[str]:
+    """What a shell tool call reaches that belongs to the full fleet, else None.
+
+    Both fields of the payload are searched as text because Copilot sends ``toolArgs`` as a JSON
+    string and a future harness may send an object; the shell tools are the only ones checked.
+    """
+    if payload.get("tool_name") not in SHELL_TOOLS:
+        return None
+    args = payload.get("tool_args")
+    text = args if isinstance(args, str) else json.dumps(args or "")
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict) and isinstance(parsed.get("command"), str):
+            text = parsed["command"]
+    except ValueError:
+        pass
+    text = _unwrapped(text)
+    if FULL_FLEET_PATH_RE.search(text):
+        return "a helper from the full fleet's skills folder"
+    if NOTIFY_RE.search(text):
+        return "the full fleet's completion notification"
+    for statement in STATEMENT_SPLIT_RE.split(text):
+        if GH_STATEMENT_RE.match(statement):
+            return "a `gh` command"
+    return None
+
+
+def lane_redirect(foreign: str) -> Dict[str, Any]:
+    """The deny answer for a lane that reached for the full fleet, naming the skills it must use."""
+    skills = (REPO / "skills").as_posix()
+    why = (f"Refused: {foreign}. This is a fleet-config-lite lane on GitLab, and on a PC that also runs the "
+           f"full fleet the skill text you were handed may be that fleet's GitHub one. Follow "
+           f"{skills}/issue-start/SKILL.md (or issue-yolo / issue-finish there) instead, use `glab` and the "
+           f"helpers under {skills}/_lib, and send no completion notification.")
+    return {"permissionDecision": "deny", "permissionDecisionReason": why,
+            "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                   "permissionDecisionReason": why}}
+
+
 def on_pre_tool_use(payload: Dict[str, Any], sid: str) -> Optional[Dict[str, Any]]:
-    if payload.get("tool_name") != ASK_TOOL or not sid:
+    if not sid:
+        return None
+    tool = payload.get("tool_name")
+    foreign = foreign_command(payload) if tool != ASK_TOOL else None
+    if tool != ASK_TOOL and foreign is None:
         return None
     _row, reason = chief_inbox.managed_row(sid)
     if reason == chief_inbox.UNDETERMINED:
-        _log("chief-managed registry unreadable; ask_user allowed but unverified")
+        _log(f"chief-managed registry unreadable; {tool} allowed but unverified")
+    if foreign is not None:
+        return lane_redirect(foreign) if reason == chief_inbox.MANAGED else None
     if reason != chief_inbox.MANAGED and not is_chief(payload, sid):
         return None
     why = ("ask_user is disabled in a chief session or a chief-managed lane: it renders only in this "

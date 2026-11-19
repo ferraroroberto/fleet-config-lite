@@ -68,6 +68,8 @@ If `~/.copilot/skills` or `~/.agents/skills` is a link into another tree, the fu
 | `~/.copilot/copilot-instructions.md` | skipped (a global instructions file reaches every Copilot session) | linked, only when free or already ours |
 | `~/.copilot/skills/<name>` | skipped (lite skills would appear beside the full fleet's) | junctioned, never over a skill that isn't ours |
 
+Because the skills are not junctioned, a lane's `/issue-start` resolves to the full fleet's GitHub skill on a shared machine, and Copilot gives that user-scope skill precedence over any extra skills folder (`COPILOT_SKILLS_DIRS`, `copilot skill add`). So `chief_ops.py dispatch` opens every brief with the paths of this checkout's own `issue-start` (or `issue-yolo`) and `issue-finish`, and the chief guard denies a chief-managed lane's shell call that runs `gh`, `notify_complete`, or a helper from the full fleet's skills folder, with a reason naming this checkout's skills. A lane therefore reads and follows lite's skill, runs only `glab`, and sends no full-fleet notification. A dedicated machine is unchanged: its lanes never reach for those commands, so the guard stays silent. A session started by hand from the Board's Start button is not chief-managed and keeps the user-scope skill.
+
 A user-scope target that is itself a link into another tree (the Copilot home, its `hooks` folder, a hook config, the skills folder) is never written through: it is skipped with a `[skip] ... is a link into another tree` line. The repo-local `.venv` is created either way.
 
 Requirements: Windows, Python 3.11+ on a real install path (the WindowsApps alias is rejected), GitHub Copilot CLI ≥ 1.0.70, `glab` authenticated against your GitLab host for the skills.

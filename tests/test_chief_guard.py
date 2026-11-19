@@ -9,6 +9,7 @@ the template's command would.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import subprocess
@@ -109,6 +110,56 @@ class GuardTests(unittest.TestCase):
         self.assertIsNone(chief_guard.on_pre_tool_use(ask, ""))
 
 
+    def _shell(self, command: str, tool: str = "powershell") -> dict:
+        return {"tool_name": tool, "tool_args": json.dumps({"command": command}), "cwd": "E:/automation/demo"}
+
+    def test_a_managed_lane_cannot_reach_the_full_fleet(self) -> None:
+        (self.state / "chief-managed.json").write_text(json.dumps({"lane-1": {}}), encoding="utf-8")
+        skills = (chief_guard.REPO / "skills").as_posix()
+        for command in ("gh issue view 5", "& gh.exe pr list", "git status; gh api repos/x/y",
+                        "python C:/Users/u/.claude/skills/_lib/worktree_claim.py acquire .",
+                        "python E:/dev/fleet-config/skills/_lib/active_issue.py add . 5 b",
+                        r"python C:\Users\u\.claude\hooks\notify_complete.py --kind start", "python notify_complete.py"):
+            denied = chief_guard.on_pre_tool_use(self._shell(command), "lane-1")
+            self.assertEqual(denied["permissionDecision"], "deny", command)
+            self.assertIn(f"{skills}/issue-start/SKILL.md", denied["permissionDecisionReason"])
+            self.assertEqual(denied["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertEqual(chief_guard.on_pre_tool_use(self._shell("gh issue view 5", "bash"), "lane-1")["permissionDecision"], "deny")
+
+    def test_lite_commands_and_other_sessions_are_left_alone(self) -> None:
+        (self.state / "chief-managed.json").write_text(json.dumps({"lane-1": {}}), encoding="utf-8")
+        for command in ("glab issue view 5", "git commit -m 'use gh later'", "ls E:/automation/fleet-config-lite/skills",
+                        "python E:/automation/fleet-config-lite/skills/_lib/worktree_claim.py acquire .",
+                        "echo ghost; ghost.exe run", "git checkout -b fix/gh-5"):
+            self.assertIsNone(chief_guard.on_pre_tool_use(self._shell(command), "lane-1"), command)
+        # A view tool reading a path is not a command, and a session that no chief dispatched is not a lane.
+        self.assertIsNone(chief_guard.on_pre_tool_use({"tool_name": "view", "tool_args": "C:/u/.claude/skills/x"}, "lane-1"))
+        self.assertIsNone(chief_guard.on_pre_tool_use(self._shell("gh issue view 5"), "other-sid"))
+        self.assertIsNone(chief_guard.on_pre_tool_use(self._shell("gh issue view 5"), ""))
+
+    def test_a_command_another_hook_wrapped_is_judged_by_what_the_lane_typed(self) -> None:
+        # The full fleet's own preToolUse hook rewrites `<cmd>` to this wrapper, whose path sits in
+        # that fleet's hooks folder; its presence alone must not read as a lane using the full fleet.
+        (self.state / "chief-managed.json").write_text(json.dumps({"lane-1": {}}), encoding="utf-8")
+
+        def wrapped(command: str) -> str:
+            encoded = base64.b64encode(command.encode("utf-8")).decode("ascii")
+            return ("& 'C:/py/python.exe' 'E:/automation/fleet-config/hooks/context_filter_cli.py' run "
+                    f"--tool PowerShell --mode rewrite --encoded {encoded} --cwd 'E:/x' --agent copilot")
+
+        self.assertIsNone(chief_guard.on_pre_tool_use(self._shell(wrapped("git status --short")), "lane-1"))
+        self.assertIsNone(chief_guard.on_pre_tool_use(self._shell(wrapped("glab issue view 5")), "lane-1"))
+        for command in ("gh issue view 5", "python C:/u/.claude/skills/_lib/worktree_claim.py acquire ."):
+            denied = chief_guard.on_pre_tool_use(self._shell(wrapped(command)), "lane-1")
+            self.assertEqual(denied["permissionDecision"], "deny", command)
+        # An encoding that is not base64 text is judged as typed, never raising.
+        self.assertIsNone(chief_guard.on_pre_tool_use(self._shell("run --encoded !!!"), "lane-1"))
+
+    def test_an_unreadable_registry_does_not_deny_a_foreign_command(self) -> None:
+        (self.state / "chief-managed.json").write_text("{not json", encoding="utf-8")
+        self.assertIsNone(chief_guard.on_pre_tool_use(self._shell("gh issue view 5"), "lane-1"))
+
+
 class EntryPointTests(unittest.TestCase):
     def test_pre_tool_use_entry_point_denies_ask_user_for_a_managed_lane(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -117,6 +168,17 @@ class EntryPointTests(unittest.TestCase):
             proc = subprocess.run([sys.executable, str(REPO / "hooks" / "chief_guard.py"), "preToolUse"],
                                   input=json.dumps({"toolName": "ask_user", "cwd": td}), capture_output=True,
                                   text=True, timeout=30, env=env, creationflags=NO_WINDOW)
+        self.assertEqual(proc.returncode, 0)
+        self.assertEqual(json.loads(proc.stdout)["permissionDecision"], "deny")
+
+    def test_pre_tool_use_entry_point_denies_gh_for_a_managed_lane(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            (Path(td) / "chief-managed.json").write_text(json.dumps({"lane-1": {}}), encoding="utf-8")
+            env = {**os.environ, "COPILOT_HOOKS_STATE_DIR": td, "APP_LAUNCHER_SESSION_ID": "lane-1", "PYTHONUTF8": "1"}
+            payload = {"toolName": "powershell", "toolArgs": json.dumps({"command": "gh issue view 5"}), "cwd": td}
+            proc = subprocess.run([sys.executable, str(REPO / "hooks" / "chief_guard.py"), "preToolUse"],
+                                  input=json.dumps(payload), capture_output=True, text=True, timeout=30, env=env,
+                                  creationflags=NO_WINDOW)
         self.assertEqual(proc.returncode, 0)
         self.assertEqual(json.loads(proc.stdout)["permissionDecision"], "deny")
 

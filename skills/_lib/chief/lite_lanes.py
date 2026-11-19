@@ -222,6 +222,25 @@ def _unconfirmed_dispatch_text(repo: str, number: int, reason: str) -> str:
     )
 
 
+def lane_preamble(mode: str) -> str:
+    """The lines every dispatch brief opens with, naming this checkout's own issue skills.
+
+    The launcher types `/issue-<mode> <N>`, which resolves to whatever sits in the user-scope
+    skills folder. On a PC that also runs the full fleet that folder is the full fleet's, whose
+    GitHub skill would run `gh` and its own completion ping, so the lane is told where lite's
+    skills are before it starts and the guard hook denies the full fleet's commands if it forgets.
+    """
+    skills = Path(__file__).resolve().parents[2].as_posix()
+    return (
+        f"This is a fleet-config-lite lane on GitLab. The skill text you were handed for `/issue-{mode}` may be "
+        f"another fleet's GitHub skill, which uses `gh` and sends its own notifications. Before any other step, "
+        f"read `{skills}/issue-{mode}/SKILL.md` and follow it instead; ship with `{skills}/issue-finish/SKILL.md`. "
+        f"Those paths only locate the skills: the issue's repository is this session's working directory. "
+        f"Use `glab` and the helpers under `{skills}/_lib`; run no `gh` command, no `notify_complete.py`, and no "
+        f"helper from a Claude Code user-scope skills or hooks folder (the session's tool guard denies them).\n\n"
+    )
+
+
 def cmd_dispatch(args: argparse.Namespace) -> int:
     brief = None
     if args.brief_file is not None:
@@ -230,6 +249,8 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
         except ValueError as exc:
             print(f"REFUSED={exc}")
             return 1
+    fleet_wide = rails.is_fleet_wide_brief(brief)
+    brief = (lane_preamble(args.mode) + (brief or "")).rstrip() + "\n"
 
     # Copilot is the only agent: a --model value is a Copilot model id, sent as typed.
     model = args.model or None
@@ -257,7 +278,7 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
         return 1
 
     running, jobs_error = launcher.fetch_running_fleet_jobs(args.base_url)
-    reason = rails.fleet_job_refusal(running, jobs_error, rails.is_fleet_wide_brief(brief),
+    reason = rails.fleet_job_refusal(running, jobs_error, fleet_wide,
                                      args.allow_during_fleet_job)
     if reason is not None:
         print(f"REFUSED={reason}")
@@ -270,8 +291,7 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
     body = {"repo": args.repo, "number": args.number, "mode": args.mode}
     if model:
         body["model"] = model
-    if brief is not None:
-        body["brief"] = brief
+    body["brief"] = brief
     if args.effort:
         body["effort"] = args.effort
     try:

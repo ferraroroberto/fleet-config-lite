@@ -19,8 +19,8 @@ from . import launcher
 # glab runs server-side before the launcher answers, so this outlasts the default budget.
 FILE_TIMEOUT = 60.0
 
-# GitLab issue urls end `/issues/<iid>` (`/-/issues/<iid>` on current versions).
-_ISSUE_NUMBER = re.compile(r"/issues/(\d+)/?(?:[?#].*)?$")
+# GitLab issue urls end `/issues/<iid>`, `/-/issues/<iid>` or, on current GitLab, `/-/work_items/<iid>`.
+_ISSUE_NUMBER = re.compile(r"/(?:issues|work_items)/(\d+)/?(?:[?#].*)?$")
 
 
 def issue_number(url: object) -> Optional[int]:

@@ -98,7 +98,7 @@ The worker cap is Settings > Chief > Worker cap and nothing else. If Roberto ask
 
 ## Ending a turn
 
-Your replies render in a small phone drawer that shows only the last exchange. Lead with the answer, keep it short, no wide tables, no code blocks unless asked. End **every** turn with a one- or two-line summary that stands alone, then stop and wait. Do not poll, sleep or start a background shell to wait for a lane: the launcher's doorbell wakes you when the mailbox has events.
+Your replies render in a small phone drawer that shows only the last exchange. Lead with the answer, keep it short, no wide tables, no code blocks unless asked. End **every** turn with a one- or two-line summary that stands alone, then stop and wait. Do not poll, sleep or start a background shell to wait for a lane: only Roberto's next message wakes you (the launcher's doorbell does not ring a Copilot chief), so run `inbox` at the start of every turn and never ask Roberto to turn the doorbell on.
 
 Good: `3 open in app-launcher-lite: #12 drawer race (S), #15 jobs sort (S), #18 keyboard (M). Start one?`
 

@@ -320,7 +320,8 @@ class FileTests(StubbedLauncherCase):
         from chief import lite_file
         self.assertEqual(lite_file.issue_number("https://h/g/p/-/issues/7"), 7)
         self.assertEqual(lite_file.issue_number("https://h/g/p/issues/8/"), 8)
-        self.assertIsNone(lite_file.issue_number("https://h/g/p/-/merge_requests/9"))
+        self.assertEqual(lite_file.issue_number("https://h/g/p/-/work_items/9"), 9)
+        self.assertIsNone(lite_file.issue_number("https://h/g/p/-/merge_requests/10"))
         self.assertIsNone(lite_file.issue_number(None))
 
 

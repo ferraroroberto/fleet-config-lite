@@ -13,10 +13,11 @@ reaches the model, ``agentStop`` ``decision: block`` forces another turn, and
   boot, a resume or a compaction never starts the chief without its intent.
 - ``agentStop``, the chief only, never while already continuing after a hold
   (``stop_hook_active``): hold the turn end once per window when the context is
-  due for compaction (``chief_ops.py compact-due``), when worker slots sit idle
-  with queued plan rows (``slots-idle``), or when chief-managed lanes are
-  working while the launcher's doorbell is off (``wake``), since their events
-  would then wake nobody.
+  due for compaction (``chief_ops.py compact-due``) or when worker slots sit idle
+  with queued plan rows (``slots-idle``). It never asks for the launcher's
+  doorbell: that bell rings only a chief whose composer the session host
+  tracks, and it does not track Copilot's, so turning it on would not wake
+  this chief.
 - ``preToolUse``: deny ``ask_user`` for the chief and for every chief-managed
   lane. It renders only in the session's own terminal, where nobody reads it.
   Also deny a chief-managed lane's shell call that reaches the full fleet (a ``gh``
@@ -42,7 +43,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _lib  # noqa: E402
@@ -127,22 +128,6 @@ def _stamp(name: str) -> None:
         _log(f"could not write {name} ({exc}); the next turn end may hold again")
 
 
-def working_lanes() -> Optional[List[str]]:
-    """Launcher sids of chief-managed lanes whose sessions-state row is `working`; None if unreadable."""
-    state = chief_inbox.state_dir()
-    try:
-        registry = json.loads((state / chief_inbox.REGISTRY_FILENAME).read_text(encoding="utf-8-sig"))
-        rows = json.loads((state / "sessions-state.json").read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return []
-    except (OSError, ValueError):
-        return None
-    if not isinstance(registry, dict) or not isinstance(rows, dict):
-        return None
-    return sorted({r.get("launcher_session_id") for r in rows.values()
-                   if isinstance(r, dict) and r.get("status") == "working" and r.get("launcher_session_id") in registry})
-
-
 def compact_hold(now: float) -> Optional[str]:
     line = _line(chief_ops("compact-due"), "COMPACT_DUE")
     if not line or not line.startswith("COMPACT_DUE percent="):
@@ -169,27 +154,11 @@ def slots_hold(now: float) -> Optional[str]:
             "queue, or ask Roberto with `chief_ops.py plan ask ... --id slots-idle`, then end the turn.")
 
 
-def doorbell_hold(now: float) -> Optional[str]:
-    lanes = working_lanes()
-    if lanes is None:
-        _log("lane state unreadable; not holding for the doorbell")
-        return None
-    if not lanes or _recent("chief-doorbell-nudge", now):
-        return None
-    wake = _line(chief_ops("wake"), "WAKE=") or ""
-    if wake.startswith("WAKE=doorbell"):
-        return None
-    _stamp("chief-doorbell-nudge")
-    return (f"{len(lanes)} lane(s) are working and the launcher's doorbell is not on ({wake or 'unknown'}), "
-            "so their mailbox events will not wake you. Ask Roberto to turn on Settings > Chief > Doorbell "
-            "with `chief_ops.py plan ask`, then end the turn.")
-
-
 def on_agent_stop(payload: Dict[str, Any], sid: str) -> Optional[Dict[str, Any]]:
     if payload.get("stop_hook_active") or not is_chief(payload, sid):
         return None
     now = time.time()
-    for hold in (compact_hold, slots_hold, doorbell_hold):
+    for hold in (compact_hold, slots_hold):
         reason = hold(now)
         if reason:
             return {"decision": "block", "reason": reason}

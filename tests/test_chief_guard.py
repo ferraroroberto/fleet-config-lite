@@ -87,16 +87,12 @@ class GuardTests(unittest.TestCase):
         out = chief_guard.on_agent_stop(self.chief_payload(), "chief-1")
         self.assertIn("SLOTS_IDLE=2", out["reason"])
 
-    def test_working_lanes_with_the_doorbell_off_hold_once(self) -> None:
+    def test_working_lanes_never_make_the_chief_ask_for_the_doorbell(self) -> None:
         (self.state / "chief-managed.json").write_text(json.dumps({"lane-1": {"repo": "demo", "number": 1}}),
                                                        encoding="utf-8")
         (self.state / "sessions-state.json").write_text(json.dumps(
             {"c": {"status": "working", "launcher_session_id": "lane-1"}}), encoding="utf-8")
-        self.lines["wake"] = "WAKE=doorbell doorbell=on fallback=waiter seconds=3000\n"
-        self.assertIsNone(chief_guard.on_agent_stop(self.chief_payload(), "chief-1"))
         self.lines["wake"] = "WAKE=waiter doorbell=off\n"
-        out = chief_guard.on_agent_stop(self.chief_payload(), "chief-1")
-        self.assertIn("1 lane(s) are working", out["reason"])
         self.assertIsNone(chief_guard.on_agent_stop(self.chief_payload(), "chief-1"))
 
     def test_ask_user_denied_for_the_chief_and_managed_lanes_only(self) -> None:

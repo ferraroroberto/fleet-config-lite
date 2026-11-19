@@ -10,7 +10,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 |---|---|
 | `hooks/session_state.py` | **Sole writer** of `sessions-state.json` — one row per live Copilot session (`working` / `needs-you` / `idle`), consumed read-only by app-launcher-lite's Board; the status machine is declared in [`docs/session-state.md`](docs/session-state.md) |
 | `hooks/chief_inbox.py` | The chief's mailbox writer, called from `session_state.py`: a chief-dispatched worker's `agentStop` / `sessionEnd` becomes one event file in `~/.copilot/hooks/state/chief-inbox/` (fleet-config's mailbox v2 format); every other session is a no-op — see [docs/chief.md](docs/chief.md) |
-| `hooks/chief_guard.py`, `hooks/chief-guard.template.json` | The chief's guard hooks: the handover log at `sessionStart`, turn-end holds at `agentStop` (compaction due, idle worker slots, lanes working with the doorbell off), and an `ask_user` deny at `preToolUse` for the chief and chief-managed lanes. `install.ps1` renders the template into `~/.copilot/hooks/` — see [docs/chief.md](docs/chief.md) |
+| `hooks/chief_guard.py`, `hooks/chief-guard.template.json` | The chief's guard hooks: the handover log at `sessionStart`, turn-end holds at `agentStop` (compaction due, idle worker slots), and an `ask_user` deny at `preToolUse` for the chief and chief-managed lanes. `install.ps1` renders the template into `~/.copilot/hooks/` — see [docs/chief.md](docs/chief.md) |
 | `hooks/_lib.py` | Payload helpers: camelCase→snake_case normalization, stdin JSON, cwd resolution |
 | `hooks/session-state.template.json` | Copilot CLI hook definition (rendered with absolute paths by the installer) |
 | `skills/issue-{add,start,finish,yolo}/` | Lite GitLab (`glab`) issue-workflow skills, discovered by Copilot from `~/.copilot/skills/` |
@@ -52,7 +52,7 @@ Then restart any running Copilot CLI session (hook configs load at startup).
 
    Re-run `install.ps1`: the line should read `[ok]`. `[unknown]` means the check could not ask (no https GitLab remote yet, or git failed for a non-credential reason such as the network); it is never read as `[ok]`. For a self-managed host, put its hostname where `gitlab.com` stands. A host that already routes to `glab` yet is still refused needs `glab auth login --hostname <host>` instead; the installer prints that when it sees the helper wired. `glab auth login --setup-git-credential-helper` is glab's own flag for the same wiring, but it is part of a sign-in, so it is not what the installer prints. `skills/_lib/gitlab_git_access.py check` prints the same verdict as `GIT_ACCESS=` / `FIX=` lines for any other checker to reuse.
 6. Restart any running Copilot session (hook configs load at startup), then run `python scripts\copilot_probe.py run --live` and record the manual items you check.
-7. In app-launcher-lite's Settings > Chief, turn the doorbell on: it is the chief's only wake path for lane events.
+7. Leave app-launcher-lite's Settings > Chief > Doorbell off: it cannot ring a Copilot chief, whose composer the session host does not track ([docs/chief.md](docs/chief.md)). The chief reads its mailbox at the start of every turn.
 
 `install.ps1 -SkipVenv -SkipChecklist` skips the last two steps (the tests use it).
 

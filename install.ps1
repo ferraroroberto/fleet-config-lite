@@ -12,8 +12,9 @@
 #    only into a real folder and never over a skill this checkout does not own.
 # 4. This checkout's .venv (stdlib only; app-launcher-lite runs the chief
 #    helpers through .venv\Scripts\python.exe), unless -SkipVenv.
-# 5. A fresh-machine checklist (Copilot CLI, glab and its sign-in, the venv,
-#    app-launcher-lite's session-host), unless -SkipChecklist.
+# 5. A fresh-machine checklist (Copilot CLI, glab and its sign-in, whether git
+#    reaches GitLab with no prompt, the venv, app-launcher-lite's session-host),
+#    unless -SkipChecklist.
 #
 # Shared machine: when ~/.copilot/skills or ~/.agents/skills is a link into
 # another tree, this PC also runs the full fleet. Then nothing is written that
@@ -254,8 +255,35 @@ if (-not $SkipChecklist) {
     if (-not $glab) {
         Write-Host '[missing] glab: install it (winget install GLab.GLab), then run glab auth login'
     } else {
+        # glab prints its status on stderr; under 'Stop', Windows PowerShell 5.1 turns that
+        # into a terminating NativeCommandError and the checklist dies here.
+        $ErrorActionPreference = 'Continue'
         & $glab.Source auth status *> $null
+        $ErrorActionPreference = 'Stop'
         if ($LASTEXITCODE -eq 0) { Write-Host '[ok] glab signed in' } else { Write-Host '[missing] glab is not signed in: run glab auth login' }
+    }
+    # glab signed in does not mean git can reach GitLab: git asks its own credential
+    # helper, and a lane (prompts off) stops on its first fetch. Ask git itself. The
+    # fix is printed for the owner to run; this installer never edits git config.
+    $accessScript = Join-Path $repo 'skills\_lib\gitlab_git_access.py'
+    $access = @{}
+    $fixes = @()
+    foreach ($line in @(& $python $accessScript check --repo $repo 2>$null)) {
+        $key, $value = ([string]$line) -split '=', 2
+        if ($key -eq 'FIX') { $fixes += $value } else { $access[$key] = $value }
+    }
+    switch ($access['GIT_ACCESS']) {
+        'ok' { Write-Host "[ok] git reaches GitLab without a prompt -> $($access['HOST'])" }
+        'missing' {
+            Write-Host "[missing] git cannot reach GitLab without a prompt ($($access['HOST'])): $($access['REASON'])"
+            Write-Host '          glab being signed in is not enough: git uses its own credential helper. Run this yourself (the installer never edits your git config):'
+            foreach ($fix in $fixes) { Write-Host "            $fix" }
+            Write-Host '          then re-run install.ps1; this line should read [ok]'
+        }
+        default {
+            $why = if ($access['REASON']) { $access['REASON'] } else { 'the check did not run' }
+            Write-Host "[unknown] git access to GitLab not confirmed: $why"
+        }
     }
     if (Test-Path $venvPython) { Write-Host '[ok] venv' } else { Write-Host '[missing] venv: re-run without -SkipVenv' }
     try {

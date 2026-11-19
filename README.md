@@ -42,9 +42,17 @@ Then restart any running Copilot CLI session (hook configs load at startup).
 1. Install Python 3.11+ (a real install, not the WindowsApps alias) and GitHub Copilot CLI (`winget install GitHub.Copilot`), then run `copilot login`.
 2. Install `glab` (`winget install GLab.GLab`) and run `glab auth login` against your GitLab host.
 3. Clone this repo and app-launcher-lite side by side (the launcher finds this checkout as its sibling `fleet-config-lite`).
-4. Run `install.ps1`. It renders the two hook configs, links the instructions and skills, creates this checkout's `.venv` (the launcher runs the chief helpers through `.venv\Scripts\python.exe`), and ends with a checklist. Each line is `[ok]`, `[missing]` with the command that fixes it, or `[unknown]`: Copilot CLI and its version, `glab` and its sign-in, the venv, and whether app-launcher-lite's session-host answers on :8466.
-5. Restart any running Copilot session (hook configs load at startup), then run `python scripts\copilot_probe.py run --live` and record the manual items you check.
-6. In app-launcher-lite's Settings > Chief, turn the doorbell on: it is the chief's only wake path for lane events.
+4. Run `install.ps1`. It renders the two hook configs, links the instructions and skills, creates this checkout's `.venv` (the launcher runs the chief helpers through `.venv\Scripts\python.exe`), and ends with a checklist. Each line is `[ok]`, `[missing]` with the command that fixes it, or `[unknown]`: Copilot CLI and its version, `glab` and its sign-in, whether git itself reaches GitLab with no prompt (next step), the venv, and whether app-launcher-lite's session-host answers on :8466.
+5. Let git reach GitLab with no prompt. `glab auth login` stores its token for `glab` alone; `git` asks its own credential helper (Git Credential Manager on Windows), which holds no GitLab credential, so a lane's first `git fetch` fails with `could not read Username ... terminal prompts disabled` while `glab auth status` reads signed in. Read the `git reaches GitLab` line of the checklist (it needs one https GitLab remote to ask, in this checkout or a sibling checkout). When it reads `[missing]`, it prints the fix for your host; run it yourself, since the installer never edits your git config. It wires `glab` as the host-scoped credential helper, in two lines (the empty first value switches Git Credential Manager off for that host only; type each line separately in PowerShell):
+
+   ```powershell
+   git --% config --global --add credential.https://gitlab.com.helper ""
+   git config --global --add credential.https://gitlab.com.helper "!glab auth git-credential"
+   ```
+
+   Re-run `install.ps1`: the line should read `[ok]`. `[unknown]` means the check could not ask (no https GitLab remote yet, or git failed for a non-credential reason such as the network); it is never read as `[ok]`. For a self-managed host, put its hostname where `gitlab.com` stands. A host that already routes to `glab` yet is still refused needs `glab auth login --hostname <host>` instead; the installer prints that when it sees the helper wired. `glab auth login --setup-git-credential-helper` is glab's own flag for the same wiring, but it is part of a sign-in, so it is not what the installer prints. `skills/_lib/gitlab_git_access.py check` prints the same verdict as `GIT_ACCESS=` / `FIX=` lines for any other checker to reuse.
+6. Restart any running Copilot session (hook configs load at startup), then run `python scripts\copilot_probe.py run --live` and record the manual items you check.
+7. In app-launcher-lite's Settings > Chief, turn the doorbell on: it is the chief's only wake path for lane events.
 
 `install.ps1 -SkipVenv -SkipChecklist` skips the last two steps (the tests use it).
 

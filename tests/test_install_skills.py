@@ -58,10 +58,11 @@ class InstallSkillsTests(unittest.TestCase):
         self.home = self.profile / ".copilot"
         self.home.mkdir(parents=True)
 
-    def install(self) -> subprocess.CompletedProcess:
+    def install(self, checklist: bool = False) -> subprocess.CompletedProcess:
         env = {**os.environ, "COPILOT_HOME": str(self.home), "USERPROFILE": str(self.profile)}
+        flags = ["-SkipVenv"] if checklist else ["-SkipVenv", "-SkipChecklist"]
         return subprocess.run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-                               str(self.repo / "install.ps1"), "-SkipVenv", "-SkipChecklist"],
+                               str(self.repo / "install.ps1"), *flags],
                               capture_output=True, text=True, timeout=180, env=env, creationflags=NO_WINDOW)
 
     def junction(self, link: Path, target: Path) -> None:
@@ -89,6 +90,14 @@ class InstallSkillsTests(unittest.TestCase):
         self.assertTrue(link.is_junction())
         self.assertEqual((self.repo / "skills" / "demo" / "SKILL.md").read_text(encoding="utf-8"), "demo")
 
+
+    def test_the_checklist_names_git_access_to_gitlab_as_unknown_when_no_remote_exists(self) -> None:
+        # The temp tree has no git checkout, so nothing can be asked: the line must say so,
+        # not read [ok] on glab's sign-in alone.
+        shutil.copytree(REPO / "skills" / "_lib", self.repo / "skills" / "_lib")
+        proc = self.install(checklist=True)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("[unknown] git access to GitLab not confirmed: no https GitLab remote found", proc.stdout)
 
     def test_a_dedicated_machine_records_every_session_and_links_everything(self) -> None:
         proc = self.install()

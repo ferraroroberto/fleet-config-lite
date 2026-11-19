@@ -22,6 +22,13 @@ Subcommands
       refuse before the POST (`REFUSED=...`); a spawn the launcher may still be
       running is `DISPATCH=unconfirmed`, never retried. On success it marks the
       session chief-managed and prints `DISPATCHED`, `DISPATCH_ID=`.
+  open <repo> [--message-file F] [--settle S] [--timeout T]
+      A plain Copilot session in a Coding project through `POST /api/apps/<id>/launch`,
+      behind `dispatch`'s occupied-repo and worker-cap rails. Not lane work: never
+      marked chief-managed, never in the plan, left running. With a message it waits
+      `--settle`, sends once, and prints `OPENED session=<sid>` plus `DELIVERED` only
+      when the transcript shows the message as a user turn; otherwise `STRANDED` or
+      `UNKNOWN`, `SESSION_LIVE` and exit 1, never `OPENED`.
   chief-sid               `CHIEF_SID=<sid>|none`.
   say <sid> [--file F] [--verify]   one POST of input; `--verify` reports
       DELIVERED / PENDING / STRANDED / UNKNOWN and never resends.

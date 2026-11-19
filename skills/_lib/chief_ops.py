@@ -29,6 +29,11 @@ Subcommands
       `--settle`, sends once, and prints `OPENED session=<sid>` plus `DELIVERED` only
       when the transcript shows the message as a user turn; otherwise `STRANDED` or
       `UNKNOWN`, `SESSION_LIVE` and exit 1, never `OPENED`.
+  file <repo> --title T --body-file F
+      Files one GitLab issue through the launcher's `POST /api/board/issues/file`
+      (the Board's file button; no labels). Prints `FILED=<repo>#<N>` and `URL=`,
+      `REFUSED=<reason>` for a 4xx or bad input, or `UNCONFIRMED=...` (exit 1) when
+      the launcher may have filed it anyway: re-read the board, never retry blind.
   chief-sid               `CHIEF_SID=<sid>|none`.
   say <sid> [--file F] [--verify]   one POST of input; `--verify` reports
       DELIVERED / PENDING / STRANDED / UNKNOWN and never resends.
@@ -87,6 +92,7 @@ from chief import (  # noqa: E402
     launcher,
     lite_commands,
     lite_compact,
+    lite_file,
     lite_lanes,
     lite_merge,
     lite_sweep,
@@ -103,6 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan_cli.add_cli(sub.add_parser("plan", help="read or change the chief's plan"))
     lite_commands.add_mailbox_parsers(sub)
     lite_lanes.add_lane_parsers(sub)
+    lite_file.add_parser(sub)
     lite_verify.add_parser(sub)
     lite_merge.add_parser(sub)
     lite_sweep.add_parser(sub)

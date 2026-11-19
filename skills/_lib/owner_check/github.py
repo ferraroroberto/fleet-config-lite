@@ -34,11 +34,11 @@ _LIB = Path(__file__).resolve().parent.parent
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 import git_run  # noqa: E402
+import gitlab_namespace  # noqa: E402
 from no_window import NO_WINDOW  # noqa: E402
 
 from owner_check import block  # noqa: E402
 
-OWNER = "ferraroroberto"
 GITLAB_HOST = "gitlab.com"
 GLAB_TIMEOUT_SECONDS = 60
 # A fleet-wide list is ~2 calls per repo plus one notes read per labelled issue.
@@ -74,8 +74,30 @@ def _json(args: Sequence[str]) -> Any:
         raise GhError(f"unparseable glab {args[0]} output: {exc}") from exc
 
 
+def namespace(repo: str) -> str:
+    """The GitLab namespace `repo` lives in (the launcher's `gitlab_group`, else its checkout's remote).
+
+    Unresolved raises `GhError` so every caller reports `unknown` rather than reading a guessed
+    namespace's 404 as "no such issue".
+    """
+    owner, why = gitlab_namespace.resolve(REPO_ROOT.parent / repo)
+    if owner is None:
+        raise GhError(f"OWNER=unknown ({why})")
+    return owner
+
+
+def __getattr__(name: str) -> str:
+    """`OWNER`, resolved on read: the byte-identical `cli.py` compares a qualified ref against it.
+
+    Unresolved yields a value no real owner equals, so such a ref is refused, never accepted.
+    """
+    if name == "OWNER":
+        return gitlab_namespace.resolve()[0] or "(owner unknown)"
+    raise AttributeError(name)
+
+
 def _slug(repo: str) -> str:
-    return f"{OWNER}/{repo}"
+    return f"{namespace(repo)}/{repo}"
 
 
 def _api(repo: str, path: str) -> str:

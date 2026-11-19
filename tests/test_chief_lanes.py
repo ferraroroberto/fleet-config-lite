@@ -152,8 +152,8 @@ class GlabIssueTests(unittest.TestCase):
 
     def test_missing_glab_is_an_error_row_not_a_crash(self) -> None:
         with mock.patch.object(launcher, "run_glab", side_effect=FileNotFoundError):
-            self.assertEqual(launcher.fetch_issue_state("demo", 5)["error"], "glab not installed")
-            code, out = _ops("issues", "demo#5")
+            self.assertEqual(launcher.fetch_issue_state("demo", 5, owner="me")["error"], "glab not installed")
+            code, out = _ops("issues", "demo#5", "--owner", "me")
         self.assertEqual((code, out), (0, "demo#5: error: glab not installed\n"))
 
 

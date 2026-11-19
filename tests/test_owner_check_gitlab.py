@@ -22,9 +22,17 @@ sys.path.insert(0, str(REPO / "skills" / "_lib"))
 sys.path.insert(0, str(REPO / "hooks"))
 
 import chief_guard  # noqa: E402
+import gitlab_namespace  # noqa: E402
 from chief import drain  # noqa: E402
 from owner_check import block, cli  # noqa: E402
 from owner_check import github as forge  # noqa: E402
+
+
+def setUpModule() -> None:
+    """The namespace comes from the live launcher; pin it so no test reads the real one."""
+    patcher = mock.patch.object(gitlab_namespace, "from_config", return_value=("ferraroroberto", ""))
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
 
 
 class FakeGlab:

@@ -21,14 +21,17 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import gitlab_namespace
 from no_window import NO_WINDOW
 
 from . import rails
 
-DEFAULT_BASE_URL = "http://127.0.0.1:8465"
-DEFAULT_OWNER = "ferraroroberto"
+DEFAULT_BASE_URL = gitlab_namespace.DEFAULT_BASE_URL
+# Sibling checkouts live next to this repo (`<parent>/<repo>`), as app-launcher-lite assumes.
+REPOS_ROOT = Path(__file__).resolve().parents[4]
 
 LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
@@ -183,10 +186,25 @@ def normalise_glab_issue(data: Dict[str, Any], repo: str) -> Dict[str, Any]:
     }
 
 
-def fetch_issue_state(repo: str, number: int, owner: str = DEFAULT_OWNER) -> Dict[str, Any]:
+OWNER_UNKNOWN = "OWNER=unknown"
+
+
+def resolve_owner(repo: str, owner: Optional[str] = None) -> Tuple[Optional[str], str]:
+    """`(namespace, "")` for `repo`: `owner` when given, else the launcher's `gitlab_group`,
+    else the sibling checkout's `origin` namespace; `(None, why)` when none answers."""
+    if owner:
+        return owner, ""
+    return gitlab_namespace.resolve(REPOS_ROOT / repo)
+
+
+def fetch_issue_state(repo: str, number: int, owner: Optional[str] = None) -> Dict[str, Any]:
     """One `glab issue view` per ref. A glab failure (not installed, not signed
     in, no such issue) becomes an `error` field rather than raising, so one bad
-    ref never aborts the rest of a multi-repo table."""
+    ref never aborts the rest of a multi-repo table. A namespace nobody
+    configured is its own `OWNER=unknown` error, never a guessed 404."""
+    owner, why = resolve_owner(repo, owner)
+    if owner is None:
+        return {"repo": repo, "number": number, "error": f"{OWNER_UNKNOWN} ({why})"}
     try:
         res = run_glab(["issue", "view", str(number), "--repo", f"{owner}/{repo}", "--output", "json"])
     except FileNotFoundError:

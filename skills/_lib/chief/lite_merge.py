@@ -106,7 +106,11 @@ def ask_on_refusal(plan_path: Path, repo: str, number: int, iid: Any, reason: st
 
 def cmd_merge(args: argparse.Namespace, glab: Glab = launcher.run_glab) -> int:
     repo, number = rails.parse_issue_ref(args.ref)
-    project = args.project or f"{args.owner}/{repo}"
+    owner, why = (None, "") if args.project else launcher.resolve_owner(repo, args.owner)
+    if owner is None and not args.project:
+        print(f"MERGE=unknown reason={launcher.OWNER_UNKNOWN} ({why})")
+        return 1
+    project = args.project or f"{owner}/{repo}"
     try:
         verdict, mr, reason = merge(project, args.branch, glab)
     except Unknown as exc:
@@ -125,7 +129,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     m.add_argument("ref", help="<repo>#<N> the merge request closes")
     m.add_argument("--branch", required=True, help="the merge request's source branch")
     m.add_argument("--ask", action="store_true", help="on a refusal, add a Board question to the chief's plan")
-    m.add_argument("--owner", default=launcher.DEFAULT_OWNER, help="GitLab namespace")
+    m.add_argument("--owner", default=None, help="GitLab namespace (default: the launcher's gitlab_group)")
     m.add_argument("--project", default=None, help="full GitLab path; overrides <owner>/<repo>")
     m.add_argument("--plan-file", default=None)
     m.set_defaults(func=cmd_merge)

@@ -134,18 +134,22 @@ def cmd_exchange(args: argparse.Namespace) -> int:
 
 
 def cmd_issues(args: argparse.Namespace) -> int:
+    owner_unknown = False
     for ref in args.refs:
         repo, number = rails.parse_issue_ref(ref)
         data = launcher.fetch_issue_state(repo, number, owner=args.owner)
         if "error" in data:
-            print(f"{repo}#{number}: error: {data['error']}")
+            # An unresolved namespace is not "no such issue": it exits 1 under its own state.
+            unknown = str(data["error"]).startswith(launcher.OWNER_UNKNOWN)
+            owner_unknown = owner_unknown or unknown
+            print(f"{repo}#{number}: {data['error'] if unknown else 'error: ' + str(data['error'])}")
             continue
         labels = ",".join(str(lab.get("name")) for lab in (data.get("labels") or []))
         print(
             f"{repo}#{number}: {data.get('state')} "
             f"\"{data.get('title')}\" [{labels}] updated={data.get('updatedAt')}"
         )
-    return 0
+    return 1 if owner_unknown else 0
 
 
 def _owner_check_refusal(repo: str, number: int) -> Optional[str]:
@@ -493,7 +497,7 @@ def add_lane_parsers(sub: argparse._SubParsersAction) -> None:
 
     i = sub.add_parser("issues", help="multi-repo issue-state table (glab)")
     i.add_argument("refs", nargs="+", help="<repo>#<number> ...")
-    i.add_argument("--owner", default=launcher.DEFAULT_OWNER)
+    i.add_argument("--owner", default=None, help="GitLab namespace (default: the launcher's gitlab_group)")
     i.set_defaults(func=cmd_issues)
 
     d = sub.add_parser("dispatch", help="guard-railed issue-start")

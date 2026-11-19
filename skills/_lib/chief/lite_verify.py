@@ -24,13 +24,13 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import gitlab_namespace
 from git_run import run_git
 
 from . import launcher
 
 EXPECTS = ("mr-open", "merged")
-# Sibling checkouts live next to this repo (`<parent>/<repo>`), as app-launcher-lite assumes.
-REPOS_ROOT = Path(__file__).resolve().parents[4]
+REPOS_ROOT = launcher.REPOS_ROOT
 Glab = Callable[[List[str]], subprocess.CompletedProcess]
 
 
@@ -105,6 +105,14 @@ def evaluate(expect: str, current: str, clean: bool, default_branch: str,
     return "CLEAN", None
 
 
+def _owner(args: argparse.Namespace, repo_path: Path) -> str:
+    """`--owner`, else the launcher's `gitlab_group`, else the checkout's `origin` namespace."""
+    owner, why = (args.owner, "") if args.owner else gitlab_namespace.resolve(repo_path)
+    if owner is None:
+        raise Unknown(f"{launcher.OWNER_UNKNOWN} ({why})")
+    return owner
+
+
 def run_verify(args: argparse.Namespace, glab: Glab = launcher.run_glab) -> Tuple[str, str, Optional[str]]:
     """`(status, current branch, reason)` for one `verify` call."""
     current = ""
@@ -114,7 +122,7 @@ def run_verify(args: argparse.Namespace, glab: Glab = launcher.run_glab) -> Tupl
         branch = args.branch or (current if args.expect == "mr-open" else "")
         if not branch:
             raise Unknown("--branch is needed to find the lane's merge request")
-        project = args.project or f"{args.owner}/{repo_path.name}"
+        project = args.project or f"{_owner(args, repo_path)}/{repo_path.name}"
         states = [str(mr.get("state") or "") for mr in merge_requests(project, branch, glab)]
     except Unknown as exc:
         return "UNKNOWN", current, str(exc)
@@ -137,6 +145,6 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     v.add_argument("--expect", choices=EXPECTS, required=True)
     v.add_argument("--branch", default=None, help="the lane's branch (mr-open defaults to the current one)")
     v.add_argument("--default-branch", default=None)
-    v.add_argument("--owner", default=launcher.DEFAULT_OWNER, help="GitLab namespace")
+    v.add_argument("--owner", default=None, help="GitLab namespace (default: the launcher's gitlab_group)")
     v.add_argument("--project", default=None, help="full GitLab path; overrides <owner>/<repo>")
     v.set_defaults(func=cmd_verify)

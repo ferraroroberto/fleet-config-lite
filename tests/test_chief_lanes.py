@@ -256,6 +256,74 @@ class OpenTests(StubbedLauncherCase):
         self.assertEqual([path for path, _ in self.stub.posts], ["/api/apps/demo/launch"])
 
 
+class FileTests(StubbedLauncherCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.body = self.state / "body.md"
+        self.body.write_text("## What\n\nSomething.\n", encoding="utf-8")
+
+    def _file(self, *extra: str, title: str = "A title") -> tuple:
+        return _ops("file", "demo", "--title", title, "--body-file", str(self.body),
+                    "--base-url", self.stub.url, *extra)
+
+    def test_files_through_the_launcher_route_and_prints_the_number(self) -> None:
+        self.stub.routes["/api/board/issues/file"] = (
+            200, {"repo": "demo", "url": "https://gitlab.example/g/demo/-/issues/12"})
+        code, out = self._file()
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.splitlines(), ["FILED=demo#12", "URL=https://gitlab.example/g/demo/-/issues/12"])
+        self.assertEqual(self.stub.posts, [("/api/board/issues/file", {
+            "repo": "demo", "title": "A title", "body": "## What\n\nSomething.\n"})])
+
+    def test_a_4xx_is_refused_with_the_launchers_reason(self) -> None:
+        self.stub.routes["/api/board/issues/file"] = (404, {"detail": "no project named demo"})
+        code, out = self._file()
+        self.assertEqual(code, 1)
+        self.assertTrue(out.startswith("REFUSED=the launcher refused the filing (HTTP 404)"), out)
+        self.assertIn("no project named demo", out)
+
+    def test_a_5xx_is_unconfirmed_not_refused(self) -> None:
+        self.stub.routes["/api/board/issues/file"] = (502, {"detail": "glab could not file the issue"})
+        code, out = self._file()
+        self.assertEqual(code, 1)
+        self.assertTrue(out.startswith("UNCONFIRMED="), out)
+        self.assertNotIn("FILED=", out)
+
+    def test_a_reply_without_an_issue_number_is_unconfirmed_not_filed(self) -> None:
+        self.stub.routes["/api/board/issues/file"] = (200, {"repo": "demo", "url": "https://gitlab.example/g/demo"})
+        code, out = self._file()
+        self.assertEqual(code, 1)
+        self.assertTrue(out.startswith("UNCONFIRMED="), out)
+        self.assertNotIn("FILED=", out)
+
+    def test_an_empty_title_or_body_is_refused_before_any_post(self) -> None:
+        code, out = self._file(title="  ")
+        self.assertEqual((code, out.strip()), (1, "REFUSED=title is empty"))
+        self.body.write_text("\n", encoding="utf-8")
+        code, out = self._file()
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSED=body file is empty", out)
+        code, out = _ops("file", "demo", "--title", "T", "--body-file", str(self.state / "missing.md"),
+                         "--base-url", self.stub.url)
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSED=body file unreadable", out)
+        self.assertEqual(self.stub.posts, [])
+
+    def test_a_silent_launcher_is_unconfirmed(self) -> None:
+        self.stub.routes["/api/board/issues/file"] = (200, {})
+        with mock.patch.object(launcher, "_request", side_effect=TimeoutError("timed out")):
+            code, out = self._file()
+        self.assertEqual(code, 1)
+        self.assertTrue(out.startswith("UNCONFIRMED=no answer within"), out)
+
+    def test_issue_number_reads_both_gitlab_url_shapes(self) -> None:
+        from chief import lite_file
+        self.assertEqual(lite_file.issue_number("https://h/g/p/-/issues/7"), 7)
+        self.assertEqual(lite_file.issue_number("https://h/g/p/issues/8/"), 8)
+        self.assertIsNone(lite_file.issue_number("https://h/g/p/-/merge_requests/9"))
+        self.assertIsNone(lite_file.issue_number(None))
+
+
 class GlabIssueTests(unittest.TestCase):
     def test_glab_issue_is_normalised_to_the_gh_row(self) -> None:
         row = launcher.normalise_glab_issue(

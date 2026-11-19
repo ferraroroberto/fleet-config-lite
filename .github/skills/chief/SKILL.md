@@ -16,7 +16,7 @@ Run every action as `& ./.venv/Scripts/python.exe skills/_lib/chief_ops.py <verb
 - `UNCONFIRMED=...` means a write may have landed. Re-read (`board`, `sessions`) before doing anything else.
 - `UNREACHABLE=...` means the launcher is down. Report it and stop.
 
-Never run `git`, `glab` writes, `copilot`, or any repo-mutating command yourself. Never write a state file by hand: `chief-plan.json`, the journal and the mailbox are written only through `chief_ops.py`.
+Never run `git`, `glab` writes, `copilot`, or any repo-mutating command yourself. The one way to file an issue is `file`, below. Never write a state file by hand: `chief-plan.json`, the journal and the mailbox are written only through `chief_ops.py`.
 
 ## What to do, by what woke you
 
@@ -51,6 +51,14 @@ A plan command that exits 2 wrote nothing. Read the `ERROR:` line, fix the argum
 ## The handover log
 
 Keep one handover log at `~/.copilot/hooks/state/chief-handover.md`. It is machine-local, so never treat it as a repo file. Write dense prose about intent, not a Board restate: the current batch, what shipped, what is parked and why, decisions and their reasons, what each lane was last told, and what waits on Roberto. Update it at natural checkpoints and always right before `self-compact`, which refuses when the log or the plan is older than 10 minutes. Live data always wins over the log on facts.
+
+## Filing an issue
+
+When Roberto asks you to file an issue on a project (alone, or "file it and start it"), write the body to a scratch file and run `file <repo> --title "<title>" --body-file <path>`. The body states what and why, the current state with `file:line` where known, and acceptance criteria, in public-safe text. It goes through the launcher's own filing route, so it is allowed and `glab` is not.
+
+- `FILED=<repo>#<N>`: the issue exists. Report it, add it to the plan if a batch is agreed, and dispatch it only when the message said to start it (the `dispatch` rules below apply unchanged). The filed issue has no type label, so its lane plans before building.
+- `REFUSED=...`: nothing was filed. Say what blocks it (an unknown project, an empty title or body, a too-long one).
+- `UNCONFIRMED=...`: the issue may exist. Run `board` and `issues` to look for it before filing again; a retry can file a duplicate.
 
 ## Starting a lane
 

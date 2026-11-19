@@ -82,7 +82,9 @@ class StubLauncher:
         self.server.server_close()
 
 
-class DispatchTests(unittest.TestCase):
+class StubbedLauncherCase(unittest.TestCase):
+    """A scratch state dir, the chief's own session id and a loopback launcher stub per test."""
+
     def setUp(self) -> None:
         self._td = tempfile.TemporaryDirectory()
         self.addCleanup(self._td.cleanup)
@@ -93,6 +95,11 @@ class DispatchTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
         self.stub = StubLauncher()
         self.addCleanup(self.stub.close)
+
+
+class DispatchTests(StubbedLauncherCase):
+    def setUp(self) -> None:
+        super().setUp()
         self.stub.routes.update({
             "/api/board": (200, {"columns": {"claude_turn": [], "your_turn": []}}),
             "/api/board/chief/settings": (200, {"settings": {"worker_cap": 2, "worker_cap_scope": "all"}}),
@@ -139,6 +146,114 @@ class DispatchTests(unittest.TestCase):
     def test_non_loopback_base_url_is_refused(self) -> None:
         code, _out = _ops("board", "--base-url", "http://example.com")
         self.assertEqual(code, 2)
+
+
+class OpenTests(StubbedLauncherCase):
+    """`open` against the loopback stub: the rails, the single POST and the delivery verdict."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.stub.routes.update({
+            "/api/apps": (200, {"apps": [{"id": "demo", "name": "demo", "kind": "claude-code"},
+                                         {"id": "tray", "name": "tray", "kind": "tray"}]}),
+            "/api/board": (200, {"columns": {"claude_turn": [], "your_turn": []}}),
+            "/api/board/chief/settings": (200, {"settings": {"worker_cap": 2, "worker_cap_scope": "all"}}),
+            "/api/apps/demo/launch": (200, {"session": {"session_id": "plain-1"}}),
+            "/api/claude-code/sessions/plain-1/input": (200, {"delivered": True, "reason": "unverified"}),
+        })
+        self.message = self.state / "message.txt"
+        self.message.write_text("Say hello\nto the team.", encoding="utf-8")
+
+    def _open(self, *extra: str) -> tuple:
+        return _ops("open", "demo", "--settle", "0", "--timeout", "0", "--poll-interval", "0",
+                    "--base-url", self.stub.url, *extra)
+
+    def _user_turn(self, text: str) -> None:
+        self.stub.routes["/api/claude-code/sessions/plain-1/transcript"] = (
+            200, {"available": True, "entries": [{"kind": "user", "text": text}]})
+
+    def test_without_a_message_it_opens_and_marks_nothing(self) -> None:
+        code, out = self._open()
+        self.assertEqual(code, 0, out)
+        self.assertIn("OPENED session=plain-1 repo=demo", out)
+        self.assertIn("MESSAGE=none", out)
+        self.assertEqual(self.stub.posts, [("/api/apps/demo/launch", {"mode": "pty", "agent": "copilot"})])
+        self.assertFalse((self.state / "chief-managed.json").exists())
+
+    def test_message_seen_as_the_first_user_turn_is_opened_and_delivered(self) -> None:
+        self._user_turn("Say hello to the team.")
+        code, out = self._open("--message-file", str(self.message))
+        self.assertEqual(code, 0, out)
+        self.assertIn("OPENED session=plain-1 repo=demo", out)
+        self.assertIn("DELIVERED sid=plain-1", out)
+        self.assertEqual([path for path, _ in self.stub.posts],
+                         ["/api/apps/demo/launch", "/api/claude-code/sessions/plain-1/input"])
+
+    def test_a_message_the_launcher_accepted_but_copilot_never_got_is_stranded_not_opened(self) -> None:
+        # The launcher answers `delivered: true` for text a still-drawing TUI drops; the
+        # transcript staying empty is the only truth.
+        self.stub.routes["/api/claude-code/sessions/plain-1/transcript"] = (
+            200, {"available": False, "reason": "no_transcript", "entries": []})
+        code, out = self._open("--message-file", str(self.message))
+        self.assertEqual(code, 1)
+        self.assertNotIn("OPENED", out)
+        self.assertIn("STRANDED sid=plain-1", out)
+        self.assertIn("SESSION_LIVE session=plain-1", out)
+        inputs = [path for path, _ in self.stub.posts if path.endswith("/input")]
+        self.assertEqual(len(inputs), 1, "the message is never resent")
+
+    def test_an_unreadable_transcript_is_unknown_not_opened(self) -> None:
+        code, out = self._open("--message-file", str(self.message))
+        self.assertEqual(code, 1)
+        self.assertNotIn("OPENED", out)
+        self.assertIn("UNKNOWN sid=plain-1", out)
+
+    def test_the_launcher_naming_the_input_undelivered_is_stranded(self) -> None:
+        self.stub.routes["/api/claude-code/sessions/plain-1/input"] = (502, {"detail": "not echoed"})
+        code, out = self._open("--message-file", str(self.message))
+        self.assertEqual(code, 1)
+        self.assertIn("STRANDED sid=plain-1", out)
+
+    def test_occupied_project_is_refused_before_any_post(self) -> None:
+        self.stub.routes["/api/board"] = (200, {"columns": {"claude_turn": [_card("other", "demo")]}})
+        code, out = self._open()
+        self.assertEqual(code, 1)
+        self.assertTrue(out.startswith("REFUSED=repo already has a live session"), out)
+        self.assertEqual(self.stub.posts, [])
+
+    def test_worker_cap_is_refused_before_any_post(self) -> None:
+        self.stub.routes["/api/board"] = (200, {"columns": {"claude_turn": [_card("a", "x"), _card("b", "y")]}})
+        code, out = self._open()
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSED=at/over worker cap: 2/2 alive", out)
+        self.assertEqual(self.stub.posts, [])
+
+    def test_unknown_or_non_coding_project_is_refused(self) -> None:
+        for repo in ("nowhere", "tray"):
+            code, out = _ops("open", repo, "--base-url", self.stub.url)
+            self.assertEqual(code, 1, repo)
+            self.assertIn("REFUSED=no Coding project named", out)
+        self.assertEqual(self.stub.posts, [])
+
+    def test_an_empty_message_file_is_refused_before_launching(self) -> None:
+        self.message.write_text("  \n", encoding="utf-8")
+        code, out = self._open("--message-file", str(self.message))
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSED=message file is empty", out)
+        self.assertEqual(self.stub.posts, [])
+
+    def test_a_launcher_refusal_is_reported_with_its_reason(self) -> None:
+        self.stub.routes["/api/apps/demo/launch"] = (409, {"detail": "demo: behind origin"})
+        code, out = self._open()
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSED=the launcher refused the launch (HTTP 409)", out)
+
+    def test_a_5xx_launch_is_unconfirmed_and_sends_no_message(self) -> None:
+        self.stub.routes["/api/apps/demo/launch"] = (503, {"detail": "busy"})
+        code, out = self._open("--message-file", str(self.message))
+        self.assertEqual(code, 1)
+        self.assertIn("OPEN=unconfirmed reason=http-503 repo=demo", out)
+        self.assertEqual([path for path, _ in self.stub.posts], ["/api/apps/demo/launch"])
 
 
 class GlabIssueTests(unittest.TestCase):

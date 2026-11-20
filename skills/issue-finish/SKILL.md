@@ -52,11 +52,16 @@ git push -u origin HEAD
 ### 4. Merge request
 
 ```
-glab mr create --fill --description "Closes #<N>" --assignee @me --remove-source-branch --squash-before-merge
+python <base-dir>/../_lib/chief_ops.py mr-create <N>
 python <base-dir>/../_lib/chief_ops.py merge <repo>#<N> --branch <branch> [--ask]
 ```
 
-`Closes #<N>` in the MR description auto-closes the issue on merge to the
+`mr-create` runs `glab mr create --fill --yes` with stdin closed and a kill
+timeout, so it cannot wait on a prompt nobody reads. It prints `MR=created
+url=...` (the branch must already be pushed, step 3) or stops on `MR=failed`,
+`MR=timeout` (glab gave no answer and was killed; check `glab mr view` before
+retrying) or `MR=unknown reason=...`. Never run bare `glab mr create` in a
+lane. `Closes #<N>` in the MR description auto-closes the issue on merge to the
 default branch. The `merge` verb asks GitLab to merge as soon as the pipeline
 passes (a project with no pipeline merges at once) and reads the state back:
 `MERGE=merged` → land; `MERGE=queued` → wait for the pipeline, then re-run the

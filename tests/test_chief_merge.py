@@ -128,3 +128,74 @@ class MergeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MrCreateTests(unittest.TestCase):
+    URL = "https://gitlab.example/demo/-/merge_requests/9"
+
+    def run_create(self, glab, timeout: float = 5.0) -> tuple:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = lite_merge.cmd_mr_create(SimpleNamespace(number=12, timeout=timeout), glab)
+        return code, out.getvalue().strip()
+
+    def test_created_never_waits_on_a_prompt_and_reports_the_url(self) -> None:
+        calls = []
+
+        def glab(args):
+            calls.append(args)
+            return subprocess.CompletedProcess(args, 0, stdout=f"Creating merge request\n{self.URL}\n", stderr="")
+
+        code, out = self.run_create(glab)
+        self.assertEqual((code, out), (0, f"MR=created url={self.URL}"))
+        self.assertIn("--yes", calls[0])
+        self.assertIn("--push=false", calls[0])
+        self.assertEqual(calls[0][calls[0].index("--description") + 1], "Closes #12")
+
+    def test_a_hang_is_its_own_failure(self) -> None:
+        def glab(args):
+            raise subprocess.TimeoutExpired(args, 5.0)
+
+        code, out = self.run_create(glab)
+        self.assertEqual(code, 1)
+        self.assertTrue(out.startswith("MR=timeout reason="), out)
+        self.assertIn("killed", out)
+
+    def test_a_failure_names_glabs_reason_and_is_never_created(self) -> None:
+        def glab(args):
+            return subprocess.CompletedProcess(args, 1, stdout="", stderr="\nERROR\nmerge request already exists\n")
+
+        self.assertEqual(self.run_create(glab), (1, "MR=failed reason=merge request already exists"))
+
+    def test_a_failure_reason_is_the_message_under_the_error_banner(self) -> None:
+        stderr = ("Creating merge request for a into main in g/p\n\nFailed to create merge request.\n"
+                  "Run the command again with the '--recover' option to retry.\n          \n   ERROR  \n          \n"
+                  "  POST https://x/merge_requests: 409 {message: [Another\n  open merge request already exists: !1]}.\n")
+
+        def glab(args):
+            return subprocess.CompletedProcess(args, 1, stdout="", stderr=stderr)
+
+        code, out = self.run_create(glab)
+        self.assertEqual(code, 1)
+        self.assertIn("409 {message: [Another open merge request already exists: !1]}", out)
+
+    def test_a_clean_exit_without_a_url_is_not_created(self) -> None:
+        def glab(args):
+            return subprocess.CompletedProcess(args, 0, stdout="done\n", stderr="")
+
+        self.assertEqual(self.run_create(glab)[0], 1)
+
+    def test_missing_glab_is_unknown(self) -> None:
+        def glab(args):
+            raise FileNotFoundError("glab")
+
+        self.assertEqual(self.run_create(glab), (1, "MR=unknown reason=glab not installed"))
+
+    def test_the_default_runner_kills_glab_at_the_timeout(self) -> None:
+        with mock.patch.object(lite_merge.launcher.subprocess, "run",
+                               side_effect=subprocess.TimeoutExpired(["glab"], 2.0)) as run:
+            code, out = self.run_create(None, timeout=2.0)
+        self.assertEqual(code, 1)
+        self.assertTrue(out.startswith("MR=timeout"), out)
+        self.assertEqual(run.call_args.kwargs["timeout"], 2.0)
+        self.assertIs(run.call_args.kwargs["stdin"], subprocess.DEVNULL)

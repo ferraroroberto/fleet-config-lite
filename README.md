@@ -52,7 +52,7 @@ Then restart any running Copilot CLI session (hook configs load at startup).
 
    Re-run `install.ps1`: the line should read `[ok]`. `[unknown]` means the check could not ask (no https GitLab remote yet, or git failed for a non-credential reason such as the network); it is never read as `[ok]`. For a self-managed host, put its hostname where `gitlab.com` stands. A host that already routes to `glab` yet is still refused needs `glab auth login --hostname <host>` instead; the installer prints that when it sees the helper wired. `glab auth login --setup-git-credential-helper` is glab's own flag for the same wiring, but it is part of a sign-in, so it is not what the installer prints. `skills/_lib/gitlab_git_access.py check` prints the same verdict as `GIT_ACCESS=` / `FIX=` lines for any other checker to reuse.
 6. Restart any running Copilot session (hook configs load at startup), then run `python scripts\copilot_probe.py run --live` and record the manual items you check.
-7. Leave app-launcher-lite's Settings > Chief > Doorbell off: it cannot ring a Copilot chief, whose composer the session host does not track ([docs/chief.md](docs/chief.md)). The chief reads its mailbox at the start of every turn.
+7. Settings > Chief > Doorbell in app-launcher-lite is the owner's choice: on, it rings an idle Copilot chief when the session host knows the composer is empty; off, only the owner's own messages wake it ([docs/chief.md](docs/chief.md)). The chief reads its mailbox at the start of every turn.
 
 `install.ps1 -SkipVenv -SkipChecklist` skips the last two steps (the tests use it).
 

@@ -26,14 +26,15 @@ sys.path.insert(0, str(REPO / "skills" / "_lib"))
 from chief import lite_merge  # noqa: E402
 
 
-def fake_glab(merge_rc: int, state: str, stderr: str = "", view_rc: int = 0):
+def fake_glab(merge_rc: int, state: str, stderr: str = "", view_rc: int = 0, status: str = ""):
     calls = []
 
     def run(args):
         calls.append(args)
         if args[:2] == ["mr", "merge"]:
             return subprocess.CompletedProcess(args, merge_rc, stdout="", stderr=stderr)
-        body = json.dumps({"iid": 7, "state": state, "web_url": "https://gitlab.example/demo/-/merge_requests/7"})
+        body = json.dumps({"iid": 7, "state": state, "detailed_merge_status": status,
+                           "web_url": "https://gitlab.example/demo/-/merge_requests/7"})
         return subprocess.CompletedProcess(args, view_rc, stdout=body, stderr="view failed" if view_rc else "")
 
     run.calls = calls
@@ -83,6 +84,27 @@ class MergeTests(unittest.TestCase):
         kinds = [json.loads(line)["kind"] for line in
                  (self.state / "chief-journal.jsonl").read_text(encoding="utf-8").splitlines()]
         self.assertEqual(kinds, ["asked"])
+
+    def test_a_boxed_glab_error_gives_its_message_not_the_banner(self) -> None:
+        boxed = ("          \n   ERROR  \n          \n"
+                 '  no open merge request available for "feat/12-x".      \n\n')
+        code, out = self.run_merge(fake_glab(1, "closed", stderr=boxed), ask=True)
+        self.assertEqual(code, 1)
+        self.assertIn('reason=no open merge request available for "feat/12-x".\n', out)
+        question = self.plan()["waiting_on_roberto"][0]["question"]
+        self.assertTrue(question.endswith('available for "feat/12-x".'), question)
+
+    def test_a_retry_lead_in_is_completed_with_gitlabs_merge_status(self) -> None:
+        retry = ("   ERROR  \n\n  All attempts fail:\n"
+                 "  #1: PUT https://gitlab.example/api/v4/projects/p/merge_requests/7/merge: 405 {message:\n"
+                 "  405 Method Not Allowed}.\n")
+        out = self.run_merge(fake_glab(1, "opened", stderr=retry, status="conflict"), ask=True)[1]
+        self.assertIn("reason=All attempts fail (merge status: conflict)\n", out)
+        self.assertIn("(merge status: conflict)", self.plan()["waiting_on_roberto"][0]["question"])
+
+    def test_a_mergeable_status_adds_nothing(self) -> None:
+        out = self.run_merge(fake_glab(1, "opened", stderr="ERROR: boom", status="mergeable"))[1]
+        self.assertTrue(out.rstrip().endswith("reason=ERROR: boom"), out)
 
     def test_refusal_without_ask_writes_no_plan(self) -> None:
         self.assertIn("MERGE=refused", self.run_merge(fake_glab(1, "opened", stderr="conflict"))[1])

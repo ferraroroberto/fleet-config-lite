@@ -33,8 +33,25 @@ from . import journal, launcher, rails
 Glab = Callable[[List[str]], subprocess.CompletedProcess]
 
 
+_BANNERS = frozenset({"ERROR", "WARNING", "WARN", "INFO"})
+_NEUTRAL_STATUSES = frozenset({"", "mergeable", "checking", "unchecked"})
+
+
 class Unknown(Exception):
     """glab could not answer."""
+
+
+def first_message(text: str) -> str:
+    """The first useful line of glab's output.
+
+    glab boxes a failure under a banner line that is only the level word
+    (`ERROR`), so the first non-empty line carries no information.
+    """
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if line and line.upper() not in _BANNERS:
+            return line
+    return ""
 
 
 def _glab(glab: Glab, args: List[str]) -> subprocess.CompletedProcess:
@@ -50,7 +67,7 @@ def mr_state(project: str, branch: str, glab: Glab) -> Dict[str, Any]:
     """The merge request from `branch` as glab shows it (`state`, `iid`, `web_url`)."""
     res = _glab(glab, ["mr", "view", branch, "--repo", project, "--output", "json"])
     if res.returncode != 0:
-        raise Unknown(f"glab mr view failed: {(res.stderr or '').strip()[:200] or 'no detail'}")
+        raise Unknown(f"glab mr view failed: {first_message(res.stderr or res.stdout)[:200] or 'no detail'}")
     try:
         data = json.loads(res.stdout or "")
     except ValueError as exc:
@@ -64,13 +81,18 @@ def merge(project: str, branch: str, glab: Glab) -> Tuple[str, Dict[str, Any], s
     """`(verdict, merge request, reason)` for one merge attempt."""
     res = _glab(glab, ["mr", "merge", branch, "--repo", project, "--auto-merge", "--squash",
                        "--remove-source-branch", "--yes"])
-    refusal = next((line.strip() for line in (res.stderr or res.stdout or "").splitlines() if line.strip()), "")
+    refusal = first_message(res.stderr or res.stdout)
     mr = mr_state(project, branch, glab)
     state = str(mr.get("state") or "")
     if state == "merged":
         return "merged", mr, ""
     if res.returncode != 0:
-        return "refused", mr, refusal or f"glab mr merge exited {res.returncode}"
+        # glab's text can be a bare lead-in ("All attempts fail:" over a 405), so the request's own
+        # merge status (conflict, ci_must_pass, ...) says what GitLab is actually waiting on.
+        status = str(mr.get("detailed_merge_status") or "")
+        said = refusal.rstrip(":") or f"glab mr merge exited {res.returncode}"
+        named = status in _NEUTRAL_STATUSES or status in said
+        return "refused", mr, said if named else f"{said} (merge status: {status})"
     if state == "opened":
         return "queued", mr, ""
     return "refused", mr, f"merge request is {state or 'in an unknown state'}"

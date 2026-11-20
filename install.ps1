@@ -12,7 +12,8 @@
 #    only into a real folder and never over a skill this checkout does not own.
 # 4. This checkout's .venv (stdlib only; app-launcher-lite runs the chief
 #    helpers through .venv\Scripts\python.exe), unless -SkipVenv.
-# 5. A fresh-machine checklist (Copilot CLI, glab and its sign-in, whether git
+# 5. A fresh-machine checklist (Copilot CLI, glab and its sign-in for the GitLab
+#    host, whether git
 #    reaches GitLab with no prompt, the venv, app-launcher-lite's session-host),
 #    unless -SkipChecklist.
 #
@@ -251,20 +252,9 @@ if (-not $SkipChecklist) {
     } else {
         Write-Host '[missing] Copilot CLI: install it (winget install GitHub.Copilot), then run copilot login'
     }
-    $glab = Get-Command glab -ErrorAction SilentlyContinue
-    if (-not $glab) {
-        Write-Host '[missing] glab: install it (winget install GLab.GLab), then run glab auth login'
-    } else {
-        # glab prints its status on stderr; under 'Stop', Windows PowerShell 5.1 turns that
-        # into a terminating NativeCommandError and the checklist dies here.
-        $ErrorActionPreference = 'Continue'
-        & $glab.Source auth status *> $null
-        $ErrorActionPreference = 'Stop'
-        if ($LASTEXITCODE -eq 0) { Write-Host '[ok] glab signed in' } else { Write-Host '[missing] glab is not signed in: run glab auth login' }
-    }
-    # glab signed in does not mean git can reach GitLab: git asks its own credential
-    # helper, and a lane (prompts off) stops on its first fetch. Ask git itself. The
-    # fix is printed for the owner to run; this installer never edits git config.
+    # The GitLab host is the one the git-access check below asks about: the https GitLab
+    # remote of this checkout or a sibling. glab keeps one sign-in per host, so a bare
+    # `glab auth status` answers for glab's default host and misreports a self-hosted one.
     $accessScript = Join-Path $repo 'skills\_lib\gitlab_git_access.py'
     $access = @{}
     $fixes = @()
@@ -272,6 +262,23 @@ if (-not $SkipChecklist) {
         $key, $value = ([string]$line) -split '=', 2
         if ($key -eq 'FIX') { $fixes += $value } else { $access[$key] = $value }
     }
+    $gitlabHost = $access['HOST']
+    $glab = Get-Command glab -ErrorAction SilentlyContinue
+    if (-not $glab) {
+        Write-Host '[missing] glab: install it (winget install GLab.GLab), then run glab auth login'
+    } elseif (-not $gitlabHost) {
+        Write-Host '[unknown] glab sign-in not confirmed: no GitLab host is configured (no https GitLab remote found in this checkout or its sibling checkouts)'
+    } else {
+        # glab prints its status on stderr; under 'Stop', Windows PowerShell 5.1 turns that
+        # into a terminating NativeCommandError and the checklist dies here.
+        $ErrorActionPreference = 'Continue'
+        & $glab.Source auth status --hostname $gitlabHost *> $null
+        $ErrorActionPreference = 'Stop'
+        if ($LASTEXITCODE -eq 0) { Write-Host "[ok] glab signed in -> $gitlabHost" } else { Write-Host "[missing] glab is not signed in to ${gitlabHost}: run glab auth login --hostname $gitlabHost" }
+    }
+    # glab signed in does not mean git can reach GitLab: git asks its own credential
+    # helper, and a lane (prompts off) stops on its first fetch. Ask git itself. The
+    # fix is printed for the owner to run; this installer never edits git config.
     switch ($access['GIT_ACCESS']) {
         'ok' { Write-Host "[ok] git reaches GitLab without a prompt -> $($access['HOST'])" }
         'missing' {

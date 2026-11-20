@@ -58,8 +58,10 @@ class InstallSkillsTests(unittest.TestCase):
         self.home = self.profile / ".copilot"
         self.home.mkdir(parents=True)
 
-    def install(self, checklist: bool = False) -> subprocess.CompletedProcess:
+    def install(self, checklist: bool = False, path_prepend: Path | None = None) -> subprocess.CompletedProcess:
         env = {**os.environ, "COPILOT_HOME": str(self.home), "USERPROFILE": str(self.profile)}
+        if path_prepend is not None:
+            env["PATH"] = f"{path_prepend}{os.pathsep}{env['PATH']}"
         flags = ["-SkipVenv"] if checklist else ["-SkipVenv", "-SkipChecklist"]
         return subprocess.run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                                str(self.repo / "install.ps1"), *flags],
@@ -98,6 +100,41 @@ class InstallSkillsTests(unittest.TestCase):
         proc = self.install(checklist=True)
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIn("[unknown] git access to GitLab not confirmed: no https GitLab remote found", proc.stdout)
+
+    def fake_glab(self) -> Path:
+        """A `glab` that is signed in for gitlab.example.test only, as a self-hosted glab is."""
+        bin_dir = self.root / "bin"
+        bin_dir.mkdir()
+        lines = ["@echo off",
+                 'echo %* | findstr /C:"auth status --hostname gitlab.example.test" >nul && exit /b 0',
+                 "exit /b 1"]
+        (bin_dir / "glab.cmd").write_text(os.linesep.join(lines) + os.linesep, encoding="ascii")
+        return bin_dir
+
+    def checklist_with_remote(self, host: str | None) -> str:
+        shutil.copytree(REPO / "skills" / "_lib", self.repo / "skills" / "_lib")
+        if host is not None:
+            for git_args in (["init", "-q"], ["remote", "add", "origin", f"https://{host}/grp/lite.git"]):
+                made = subprocess.run(["git", "-C", str(self.repo), *git_args], capture_output=True,
+                                      text=True, creationflags=NO_WINDOW)
+                self.assertEqual(made.returncode, 0, made.stderr)
+        proc = self.install(checklist=True, path_prepend=self.fake_glab())
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        return proc.stdout
+
+    def test_glab_sign_in_is_asked_for_the_configured_gitlab_host(self) -> None:
+        out = self.checklist_with_remote("gitlab.example.test")
+        self.assertIn("[ok] glab signed in -> gitlab.example.test", out)
+
+    def test_glab_not_signed_in_to_the_configured_host_names_the_host_fix(self) -> None:
+        out = self.checklist_with_remote("other.example.test")
+        self.assertIn("[missing] glab is not signed in to other.example.test: "
+                      "run glab auth login --hostname other.example.test", out)
+
+    def test_glab_sign_in_is_unknown_when_no_gitlab_host_is_configured(self) -> None:
+        out = self.checklist_with_remote(None)
+        self.assertIn("[unknown] glab sign-in not confirmed: no GitLab host is configured", out)
+        self.assertNotIn("[missing] glab is not signed in", out)
 
     def test_a_dedicated_machine_records_every_session_and_links_everything(self) -> None:
         proc = self.install()

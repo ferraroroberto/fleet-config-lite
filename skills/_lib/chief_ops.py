@@ -44,6 +44,8 @@ Subcommands
       Settings threshold; `COMPACT_DUE=unknown` (exit 1) when unreadable.
   self-compact | lane-compact   queue `/compact <focus>` on the caller's own
       session behind `chief/compact.py`'s refusals (`COMPACT_QUEUED`).
+  mr-create <N> [--timeout S]   open the branch's merge request with `--yes` and a
+      kill timeout: `MR=created url=...` or `MR=failed|timeout|unknown reason=...`.
   merge <repo>#<N> --branch B [--ask]   `glab mr merge --auto-merge`, then GitLab's
       state read back: `MERGE=merged|queued|refused|unknown`; with `--ask` a
       refusal becomes a plan question (`MERGE_ASKED=merge-<repo>-<N>`).

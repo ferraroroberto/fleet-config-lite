@@ -1,4 +1,4 @@
-"""`chief_ops.py merge`: the lite merge path, and a refused merge as a Board question.
+"""`chief_ops.py merge` and `mr-create`: the lite merge path, and a refused merge as a Board question.
 
 A lite lane ships through a GitLab merge request. This verb asks GitLab to merge
 the request from `--branch`, squashed and with the source branch removed, as
@@ -21,16 +21,23 @@ refusal for the same item reuses the open question.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
+import re
 import subprocess
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import chief_plan
 
 from . import journal, launcher, rails
 
 Glab = Callable[[List[str]], subprocess.CompletedProcess]
+
+# Opening a request is one API call (the branch is already pushed), so a minute
+# is generous; past it glab is waiting on something no one will answer.
+MR_CREATE_TIMEOUT = 60.0
+_MR_URL = re.compile(r"https?://\S+/-/merge_requests/\d+")
 
 
 _BANNERS = frozenset({"ERROR", "WARNING", "WARN", "INFO"})
@@ -146,6 +153,49 @@ def cmd_merge(args: argparse.Namespace, glab: Glab = launcher.run_glab) -> int:
     return 0 if verdict in ("merged", "queued") else 1
 
 
+def error_detail(text: str) -> str:
+    """The message under glab's last `ERROR` banner as one line, else `first_message`.
+
+    `mr create` prints a progress line and a recovery hint before the banner, so
+    its first line says nothing about why the request was not created.
+    """
+    lines = [line.strip() for line in (text or "").splitlines()]
+    banners = [i for i, line in enumerate(lines) if line.upper() == "ERROR"]
+    if banners:
+        detail = " ".join(line for line in lines[banners[-1] + 1:] if line)
+        if detail:
+            return detail[:300]
+    return first_message(text)
+
+
+def create_mr(number: int, glab: Glab) -> Tuple[str, str]:
+    """`(verdict, detail)` for opening the current branch's merge request.
+
+    `--yes` skips glab's submission prompt, and `--push=false` leaves the push to
+    the caller's own `git push`: glab would otherwise spawn git, which the
+    timeout cannot kill. `launcher.run_glab` closes stdin, so any prompt that
+    remains fails at once instead of waiting.
+    """
+    try:
+        res = glab(["mr", "create", "--fill", "--yes", "--push=false", "--description", f"Closes #{number}",
+                    "--assignee", "@me", "--remove-source-branch", "--squash-before-merge"])
+    except FileNotFoundError:
+        return "unknown", "glab not installed"
+    except subprocess.TimeoutExpired as exc:
+        return "timeout", f"glab mr create gave no answer within {exc.timeout:g}s and was killed"
+    found = _MR_URL.search(f"{res.stdout or ''}\n{res.stderr or ''}")
+    if res.returncode == 0 and found:
+        return "created", found.group(0)
+    return "failed", error_detail(res.stderr or res.stdout) or f"glab mr create exited {res.returncode}"
+
+
+def cmd_mr_create(args: argparse.Namespace, glab: Optional[Glab] = None) -> int:
+    run = glab or functools.partial(launcher.run_glab, timeout=args.timeout)
+    verdict, detail = create_mr(args.number, run)
+    print(f"MR={verdict} {'url' if verdict == 'created' else 'reason'}={detail}")
+    return 0 if verdict == "created" else 1
+
+
 def add_parser(sub: argparse._SubParsersAction) -> None:
     m = sub.add_parser("merge", help="merge a lane's GitLab merge request when its pipeline passes")
     m.add_argument("ref", help="<repo>#<N> the merge request closes")
@@ -155,3 +205,8 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     m.add_argument("--project", default=None, help="full GitLab path; overrides <owner>/<repo>")
     m.add_argument("--plan-file", default=None)
     m.set_defaults(func=cmd_merge)
+
+    c = sub.add_parser("mr-create", help="open the current branch's merge request with no prompt, bounded by a timeout")
+    c.add_argument("number", type=int, help="the issue number the merge request closes")
+    c.add_argument("--timeout", type=float, default=MR_CREATE_TIMEOUT, help="seconds before glab is killed")
+    c.set_defaults(func=cmd_mr_create)

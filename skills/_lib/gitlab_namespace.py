@@ -17,9 +17,11 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import issue_host
+import lite_ports
 from git_run import run_git
 
-DEFAULT_BASE_URL = "http://127.0.0.1:8465"
+# app-launcher-lite's webapp, on the port its own config.json sets.
+DEFAULT_BASE_URL = lite_ports.webapp_url()
 _LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 CONFIG_TIMEOUT = 5.0
 GIT_TIMEOUT = 15.0

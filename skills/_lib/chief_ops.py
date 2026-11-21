@@ -7,8 +7,9 @@ wherever the format is shared with app-launcher-lite's readers; the state they
 write lives under `~/.copilot/hooks/state/` (`fleet_core/hooks_state.py`,
 override `COPILOT_HOOKS_STATE_DIR`).
 
-Every launcher call goes to app-launcher-lite on `http://127.0.0.1:8465`
-(`--base-url` overrides, loopback only); every forge read goes through `glab`.
+Every launcher call goes to app-launcher-lite on the webapp port its own
+`config/config.json` sets (`lite_ports.py`; 8465 when unset; `--base-url`
+overrides, loopback only); every forge read goes through `glab`.
 
 Subcommands
 -----------

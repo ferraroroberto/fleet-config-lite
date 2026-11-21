@@ -2,7 +2,7 @@
 plus the one `glab issue view` per issue ref.
 
 Lite: a copy of fleet-config's `chief/launcher.py` with three seams changed --
-`DEFAULT_BASE_URL` is lite's webapp (plain HTTP on :8465), `fetch_issue_state`
+`DEFAULT_BASE_URL` is lite's webapp (plain HTTP on the port in its config.json), `fetch_issue_state`
 reads GitLab through `glab` and normalises to the `gh` shape the ported `rails`
 and `issues` read, and the Codex model catalog read is gone (Copilot is the only
 agent). Every endpoint path is the same on lite.

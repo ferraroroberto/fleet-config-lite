@@ -50,6 +50,7 @@ class StubLauncher:
     def __init__(self) -> None:
         self.routes: dict = {}
         self.posts: list = []
+        self.paths: list = []
         stub = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -57,6 +58,7 @@ class StubLauncher:
                 pass
 
             def _answer(self) -> None:
+                stub.paths.append(self.path)
                 status, body = stub.routes.get(self.path, (404, {"detail": "no route"}))
                 raw = json.dumps(body).encode("utf-8")
                 self.send_response(status)

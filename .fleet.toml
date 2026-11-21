@@ -130,15 +130,17 @@ allow    = [
 # .conventions-ratchet-baseline.json. Enabled: no-window (hooks and skills spawn on
 # Windows), logging-not-print (hooks/ and skills/ hold the library code) and
 # no-drive-path (nothing here may name a machine's drive), subprocess-timeout (every
-# subprocess.run/call/check_* passes timeout=). secret-compare and git-wrapper
-# stay off because the repo has no secret-compare or git helper. There is no [e2e]
+# subprocess.run/call/check_* passes timeout=) and git-wrapper (every `git` spawn goes
+# through skills/_lib/git_run.py). secret-compare stays off because the repo has no
+# secret-compare helper. There is no [e2e]
 # router table, so the baseline file needs no tier rule. Existing hits are baselined,
 # never excluded. Exit 3 (git unusable, a .py file that does not parse) fails the run
 # as NOT CONFIRMED. Procedure: project-scaffolding docs/conventions-ratchet.md.
 [conventions_ratchet]
 enabled     = true
 baseline    = ".conventions-ratchet-baseline.json"
-rules       = ["no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "browser-per-iteration", "state-literal", "state-set-repeat", "state-write"]
+rules       = ["no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "browser-per-iteration", "state-literal", "state-set-repeat", "state-write", "git-wrapper"]
+git_wrappers = ["skills/_lib/git_run.py"]
 print_paths = ["hooks/", "skills/"]
 
 # [runtime_write_ratchet] -- scripts/runtime_write_ratchet.py fails when a tracked

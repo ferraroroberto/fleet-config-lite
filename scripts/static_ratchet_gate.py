@@ -21,6 +21,9 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "skills" / "_lib"))
+from no_window import NO_WINDOW  # noqa: E402
+
 SCRIPT = REPO_ROOT / "scripts" / "static_ratchet.py"
 
 EXIT_PASS, EXIT_NEW, EXIT_CONFIG, EXIT_NOT_CONFIRMED = 0, 1, 2, 3
@@ -28,9 +31,6 @@ EXIT_PASS, EXIT_NEW, EXIT_CONFIG, EXIT_NOT_CONFIRMED = 0, 1, 2, 3
 # The script bounds each of its two detectors at 600 s itself; this only has to
 # outlast both so a hung child is reported by the script's own NOT CONFIRMED.
 RUN_TIMEOUT_S = 1300
-
-# The script spawns npx/ruff; keep the console window hidden on Windows.
-_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 _FAIL_LABELS = {
     EXIT_NEW: "NEW finding or missing baseline",
@@ -53,7 +53,7 @@ def run(script: Path = SCRIPT) -> tuple[int, str]:
         proc = subprocess.run(
             [sys.executable, str(script)],
             cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8",
-            errors="replace", stdin=subprocess.DEVNULL, creationflags=_NO_WINDOW,
+            errors="replace", stdin=subprocess.DEVNULL, creationflags=NO_WINDOW,
             timeout=RUN_TIMEOUT_S, check=False,
         )
         code, output = proc.returncode, (proc.stdout or "") + (proc.stderr or "")

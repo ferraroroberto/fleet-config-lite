@@ -46,8 +46,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "_lib"))
 import runtime_files  # noqa: E402
+from git_run import run_git  # noqa: E402
+from no_window import NO_WINDOW  # noqa: E402
 
-NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 REPORT_VERSION = 1
 STATUSES = ("verified", "unsupported", "unknown")
 DEFAULT_REPORT = Path.home() / ".copilot" / "hooks" / "state" / "copilot-probe.json"
@@ -200,7 +201,7 @@ def write_probe_folder(folder: Path, context_word: str, block_word: str,
                             f"Before stopping, reply with exactly this word on its own line: {block_word}")
     if deny:
         runtime_files.save_text(folder / "deny.txt", "Denied by the capability probe.")
-    _run(["git", "init", "-q", str(folder)], STATIC_TIMEOUT_SECONDS)
+    run_git(["init", "-q", str(folder)], timeout=STATIC_TIMEOUT_SECONDS)
 
 
 def hook_main(event: str, folder: Path, stdin_text: str) -> str:

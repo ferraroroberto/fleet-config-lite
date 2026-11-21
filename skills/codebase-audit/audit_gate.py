@@ -42,6 +42,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
+from git_run import run_git  # noqa: E402
 from issue_host import (  # noqa: E402
     cli_for,
     comment_args,
@@ -58,6 +59,7 @@ from issue_host import (  # noqa: E402
     url_from_view,
     view_url_args,
 )
+from no_window import NO_WINDOW  # noqa: E402
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -65,7 +67,6 @@ try:
 except (AttributeError, ValueError):  # pragma: no cover
     pass
 
-NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 BUCKETS = ("bug", "stale", "slop", "documentation")
 KINDS = ("ledger",) + BUCKETS
@@ -216,7 +217,7 @@ def _run(cmd: list[str], cwd: str | None = None) -> subprocess.CompletedProcess:
 def git(repo_path: str, *args: str) -> str | None:
     """stdout of a git command, or None on any failure."""
     try:
-        r = _run(["git", *args], cwd=repo_path)
+        r = run_git(["-C", repo_path, *args], timeout=120)
     except (OSError, subprocess.SubprocessError):
         return None
     return r.stdout.strip() if r.returncode == 0 else None

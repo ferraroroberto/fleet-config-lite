@@ -58,6 +58,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
+from git_run import run_git  # noqa: E402
 from issue_host import (  # noqa: E402
     cli_for,
     comment_args,
@@ -73,6 +74,7 @@ from issue_host import (  # noqa: E402
     url_from_view,
     view_url_args,
 )
+from no_window import NO_WINDOW  # noqa: E402
 from runtime_files import make_dirs, save_text  # noqa: E402
 
 try:
@@ -80,8 +82,6 @@ try:
     sys.stderr.reconfigure(encoding="utf-8")
 except (AttributeError, ValueError):  # pragma: no cover
     pass
-
-NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 LEDGER_TITLE = "Learning log"
 LEDGER_LABEL = "learning-log"
@@ -311,7 +311,7 @@ def _cli_json(cli: str, args: list[str]) -> list | dict:
 
 def git_remote_url(remote: str = "origin") -> str:
     try:
-        proc = _run(["git", "remote", "get-url", remote], timeout=15)
+        proc = run_git(["remote", "get-url", remote], timeout=15)
     except (OSError, subprocess.SubprocessError):
         return ""
     return proc.stdout.strip() if proc.returncode == 0 else ""

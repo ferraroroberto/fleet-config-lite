@@ -173,9 +173,18 @@ class HostTests(StubbedRunnerCase):
                              (host, cli, repo), url)
 
     def test_resolve_repo_reads_origin(self):
-        runner = self.stub(StubRunner(stdout="https://gitlab.com/example-group/example-repo.git\n"))
+        calls: list[list[str]] = []
+
+        def fake_git(args, *, timeout=None):
+            calls.append(list(args))
+            return subprocess.CompletedProcess(
+                args, 0, stdout="https://gitlab.com/example-group/example-repo.git\n", stderr="")
+
+        original = pa.run_git
+        pa.run_git = fake_git
+        self.addCleanup(setattr, pa, "run_git", original)
         self.assertEqual(pa.resolve_repo(Path(".")), ("gitlab", "example-group/example-repo"))
-        self.assertEqual(runner.calls[0], ["git", "remote", "get-url", "origin"])
+        self.assertEqual(calls[0], ["-C", ".", "remote", "get-url", "origin"])
 
     def test_gitlab_origin_drives_glab(self):
         runner = self.stub(StubRunner(stdout='[{"iid": 4, "title": "prompt-audit ledger", "description": "", "state": "opened"}]'))
@@ -298,9 +307,11 @@ class ContractTests(unittest.TestCase):
             hits = [l for l in lines if self.VENDOR_WORDS.search(self.FILE_CONVENTIONS.sub("", l))]
             self.assertEqual(hits, [], name)
 
-    def test_helper_reaches_only_the_shared_issue_host_module(self):
+    def test_helper_reaches_only_the_shared_lib_modules_it_names(self):
         src = (SKILL_DIR / "audit.py").read_text(encoding="utf-8")
-        self.assertNotRegex(src, r"(?m)^\s*(?:from|import)\s+(?:_lib|git_run|audit_issue|no_window)\b")
+        self.assertNotRegex(src, r"(?m)^\s*(?:from|import)\s+(?:_lib|audit_issue)\b")
+        self.assertEqual(sorted(re.findall(r"(?m)^from (git_run|issue_host|no_window) import", src)),
+                         ["git_run", "issue_host", "no_window"])
         self.assertEqual(re.findall(r"(?m)^[ \t]*sys\.path\.insert\(.*", src),
                          ['sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))'])
         self.assertTrue((SKILL_DIR.parent / "_lib" / "issue_host.py").is_file())

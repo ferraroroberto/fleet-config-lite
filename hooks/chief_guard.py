@@ -87,7 +87,6 @@ HANDOVER_MAX_CHARS = 24000
 # Each hold fires at most once per window, so a hold can never loop the chief.
 HOLD_WINDOW_S = 600
 CHIEF_OPS_TIMEOUT_S = 20
-NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
 def _log(message: str) -> None:
@@ -99,7 +98,7 @@ def chief_ops(*args: str) -> Optional[str]:
     try:
         res = subprocess.run(  # noqa: S603 -- this repo's own helper, argv built here
             [sys.executable, str(CHIEF_OPS), *args], capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=CHIEF_OPS_TIMEOUT_S, creationflags=NO_WINDOW, stdin=subprocess.DEVNULL,
+            errors="replace", timeout=CHIEF_OPS_TIMEOUT_S, creationflags=_lib.NO_WINDOW, stdin=subprocess.DEVNULL,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         _log(f"chief_ops {args[0]} did not run ({type(exc).__name__})")

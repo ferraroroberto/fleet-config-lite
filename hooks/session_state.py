@@ -107,9 +107,7 @@ def _stored_status(row: Any) -> Optional[SessionStatus]:
 
 def state_file() -> Path:
     """Resolve the state-file path at call time so the env override always wins."""
-    root = os.environ.get("COPILOT_HOOKS_STATE_DIR")
-    base = Path(root) if root else Path.home() / ".copilot" / "hooks" / "state"
-    return base / STATE_FILENAME
+    return _lib.state_dir() / STATE_FILENAME
 
 
 def _now() -> datetime:

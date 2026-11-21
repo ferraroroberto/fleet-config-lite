@@ -282,7 +282,7 @@ def write_bucket_files(out_dir: Path, prs: list[dict], issues: list[dict]) -> li
         for i in bi:
             tag = f" [{','.join(i['labels'])}]" if i["labels"] else ""
             lines.append(f"- [{i['repo']}#{i['number']}] {i['title']}{tag}")
-        save_text(path, "\n".join(lines) + "\n")
+        save_text(path, "\n".join(lines) + "\n", encoding="utf-8")
         manifest.append((bucket, slug, len(bp), len(bi), path))
     return manifest
 
@@ -445,7 +445,7 @@ def cmd_gather(args) -> int:
 
     out_dir = Path(args.out_dir or (Path(tempfile.gettempdir()) / f"learning-log-{today}"))
     try:
-        make_dirs(out_dir)
+        make_dirs(out_dir, parents=True, exist_ok=True)
     except ValueError as exc:
         print(f"Refused --out-dir: {exc}", file=sys.stderr)
         return 1
@@ -464,11 +464,12 @@ def cmd_gather(args) -> int:
     stats = compute_stats(all_prs, all_issues)
     stats_md = render_stats(stats, since, today)
     stats_file = out_dir / "stats.md"
-    save_text(stats_file, stats_md)
+    save_text(stats_file, stats_md, encoding="utf-8")
 
     save_text(
         out_dir / "prior-horizon.md",
-        slice_section(prior_body, HORIZON_HEADER) or "(none -- first run, no prior horizon to grade)")
+        slice_section(prior_body, HORIZON_HEADER) or "(none -- first run, no prior horizon to grade)",
+        encoding="utf-8")
 
     manifest = write_bucket_files(out_dir, all_prs, all_issues)
 
@@ -496,7 +497,7 @@ def cmd_assemble_ledger(args) -> int:
     discoveries = Path(args.discoveries_file).read_text(encoding="utf-8") if args.discoveries_file else ""
     body = build_ledger_body(prior_body, today, horizon, discoveries)
     try:
-        save_text(args.out, body)
+        save_text(args.out, body, encoding="utf-8")
     except ValueError as exc:
         print(f"Refused --out: {exc}", file=sys.stderr)
         return 1

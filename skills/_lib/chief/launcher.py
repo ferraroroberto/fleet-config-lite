@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import json
 import ssl
-import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -25,7 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import gitlab_namespace
-from no_window import NO_WINDOW
+from glab_run import GlabError, glab_json, run_glab
 
 from . import rails
 
@@ -157,22 +156,6 @@ def _request(
     return json.loads(raw) if raw else {}
 
 
-# glab spawns its own API calls; one issue view is well under this on a working network.
-GLAB_TIMEOUT = 30.0
-
-
-def run_glab(args: List[str], timeout: float = GLAB_TIMEOUT) -> subprocess.CompletedProcess:
-    """`glab <args>`, UTF-8 decoded, no console window, stdin closed.
-
-    Raises `FileNotFoundError` when glab is not installed: the callers report
-    that as its own state, never as an empty answer.
-    """
-    return subprocess.run(  # noqa: S603 -- fixed executable, argv built by the callers
-        ["glab", *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=timeout, creationflags=NO_WINDOW, stdin=subprocess.DEVNULL,
-    )
-
-
 def normalise_glab_issue(data: Dict[str, Any], repo: str) -> Dict[str, Any]:
     """`glab issue view --output json` as the `gh issue view --json` row the readers expect."""
     state = str(data.get("state") or "")
@@ -206,19 +189,10 @@ def fetch_issue_state(repo: str, number: int, owner: Optional[str] = None) -> Di
     if owner is None:
         return {"repo": repo, "number": number, "error": f"{OWNER_UNKNOWN} ({why})"}
     try:
-        res = run_glab(["issue", "view", str(number), "--repo", f"{owner}/{repo}", "--output", "json"])
-    except FileNotFoundError:
-        return {"repo": repo, "number": number, "error": "glab not installed"}
-    except subprocess.TimeoutExpired:
-        return {"repo": repo, "number": number, "error": f"glab timed out after {GLAB_TIMEOUT:g}s"}
-    if res.returncode != 0:
-        return {"repo": repo, "number": number, "error": res.stderr.strip() or "glab error"}
-    try:
-        data = json.loads(res.stdout)
-    except ValueError:
-        return {"repo": repo, "number": number, "error": "unparseable glab output"}
-    if not isinstance(data, dict):
-        return {"repo": repo, "number": number, "error": "glab output was not an object"}
+        data = glab_json(["issue", "view", str(number), "--repo", f"{owner}/{repo}", "--output", "json"],
+                         run_glab, expect=dict)
+    except GlabError as exc:
+        return {"repo": repo, "number": number, "error": str(exc)}
     return normalise_glab_issue(data, repo)
 
 

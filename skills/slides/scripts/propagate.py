@@ -130,7 +130,7 @@ def propagate(source: Path, deck_dir: Optional[Path] = None) -> int:
         rewritten.append((target, new_text))
 
     for target, new_text in rewritten:
-        save_text(target, new_text, newline="")
+        save_text(target, new_text, encoding="utf-8", newline="")
         log.info("✅ stamped %s", target.name)
     log.info("✅ propagated %d block(s) into %d file(s).", len(blocks), len(rewritten))
     return len(rewritten)

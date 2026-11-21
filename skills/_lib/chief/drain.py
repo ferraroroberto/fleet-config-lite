@@ -67,8 +67,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Tuple
 
 import chief_plan
-import runtime_files
 from active_issue import _iso_z, _now, state_lock, write_rows
+from fleet_core import runtime_files
 from fleet_core.hooks_state import state_dir
 from issue_host import _MARKER_RE
 from owner_check import github as forge
@@ -381,8 +381,8 @@ def remember(path: Path, adds: List[Dict[str, str]]) -> None:
 def write_brief(ref: str, kind: str) -> Path:
     text = BRIEF_TEMPLATE.read_text(encoding="utf-8").replace("__REF__", ref).replace("__KIND__", kind)
     path = state_dir() / BRIEF_DIRNAME / (ref.replace("#", "-") + ".md")
-    runtime_files.make_dirs(path.parent)
-    runtime_files.save_text(path, text)
+    runtime_files.make_dirs(path.parent, parents=True, exist_ok=True)
+    runtime_files.save_text(path, text, encoding="utf-8")
     return path
 
 

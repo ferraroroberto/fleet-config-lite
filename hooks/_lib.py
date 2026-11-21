@@ -27,6 +27,7 @@ so a future harness that already speaks snake_case passes through unchanged.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -36,6 +37,9 @@ from typing import Any, Dict
 # The one NO_WINDOW for the hooks tree: a hook spawns with no console of its own, so an
 # unsuppressed child flashes a window on screen.
 NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+#: Overrides the hooks-state folder; the skills tier names it in `fleet_core/hooks_state.py`.
+STATE_DIR_ENV_VAR = "COPILOT_HOOKS_STATE_DIR"
 
 _CAMEL_BOUNDARY = re.compile(r"(?<!^)(?=[A-Z])")
 
@@ -92,6 +96,16 @@ def read_stdin_json() -> Dict[str, Any]:
     if not isinstance(data, dict):
         return {}
     return normalize_payload(data)
+
+
+def state_dir() -> Path:
+    """The hooks-state folder, resolved at call time so the env override always wins.
+
+    The hooks tree cannot import `skills/_lib`, so `fleet_core/hooks_state.py` holds the
+    skills tier's twin; `tests/test_state_dir_resolvers.py` holds the two equal.
+    """
+    root = os.environ.get(STATE_DIR_ENV_VAR)
+    return Path(root) if root else Path.home() / ".copilot" / "hooks" / "state"
 
 
 def cwd(payload: Dict[str, Any]) -> Path:

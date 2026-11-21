@@ -107,8 +107,8 @@ Three skills port the private `fleet-config`'s `/codebase-audit` → `/audit-fle
 **The significance gate is what keeps it cheap.** `skills/codebase-audit/audit_gate.py gate` decides, deterministically, whether a repo deserves a read: it stores the last audited default-branch sha and rubric hash in a `codebase-audit ledger` issue (label `audit-meta`, the same block the private tool writes, so a repo audited by both keeps one ledger — this repo's is its open `audit-meta` issue), then counts added+deleted lines on the mainline since that sha over **source paths only** (docs, markdown, tests and lockfiles weigh nothing) and skips commits whose message references one of the repo's own audit issues (`Closes #N`, a `<type>/N-slug` branch). Below the threshold (default 1000, `--threshold N`) the repo accumulates and the run stops before reading a file; only real growth buys a re-read, so fixing audit findings never triggers the next audit. Every unknown — no ledger, an unreachable baseline, a diff it cannot read — fails open to `AUDIT`.
 
 ```powershell
-python skills\codebase-audit\audit_gate.py gate             # {"decision": "SKIP_BELOW_THRESHOLD", ...}
-python skills\codebase-audit\audit_gate.py get --kind slop   # the managed issue, or number: null
+.venv\Scripts\python.exe skills\codebase-audit\audit_gate.py gate             # {"decision": "SKIP_BELOW_THRESHOLD", ...}
+.venv\Scripts\python.exe skills\codebase-audit\audit_gate.py get --kind slop   # the managed issue, or number: null
 ```
 
 Host is detected from `origin` like `learning-log`: the GitHub path is exercised live against this repo, the GitLab path follows `glab`'s documented CLI shape but isn't live-tested here.
@@ -131,9 +131,9 @@ It is a deliberate, narrow exception to this repo's "no LLM calls" principle, th
 The hashes are of the committed (LF) bytes; a checkout with `core.autocrlf=true` shows CRLF on disk, which `audit.py` normalises before hashing the rubric. `audit.py` itself is a near-duplicate of the private helper, not a copy; it shares its remote-URL, marker and gh/glab issue helpers with the other audit skills through `skills/_lib/issue_host.py`.
 
 ```powershell
-python skills\prompt-audit\audit.py host                  # HOST=github|CLI=gh|REPO=...
-python skills\prompt-audit\audit.py plan                  # REPOS= (at most 2), PLAN=/HIT= lines, DEFERRED= repos
-python skills\prompt-audit\audit.py ledger-write --run run.json --dry-run   # ARGV= lines, nothing spawned
+.venv\Scripts\python.exe skills\prompt-audit\audit.py host                  # HOST=github|CLI=gh|REPO=...
+.venv\Scripts\python.exe skills\prompt-audit\audit.py plan                  # REPOS= (at most 2), PLAN=/HIT= lines, DEFERRED= repos
+.venv\Scripts\python.exe skills\prompt-audit\audit.py ledger-write --run run.json --dry-run   # ARGV= lines, nothing spawned
 ```
 
 Host is detected from `origin` like the other skills: the GitHub path is exercised live against this repo; the GitLab path is unit-tested with a stubbed runner (a GitLab origin drives `glab issue list/create/update/note`) but isn't live-tested here, since `glab` isn't installed on this dev machine.
@@ -156,8 +156,8 @@ All hooks are advisory-only: every failure is swallowed and the hook exits 0 —
 ## Tests
 
 ```powershell
-python -m pip install -r requirements-dev.txt   # ruff, for the static ratchet below
-python -m unittest discover -s tests -v
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt   # ruff, for the static ratchet below
+.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 The hooks and skills are stdlib only; the test run's one dev dependency is ruff (`requirements-dev.txt`, pinned), and nothing in it ships to the machines `install.ps1` wires up.
@@ -197,10 +197,10 @@ The remaining failure modes are **silent** — the session runs fine, the hook j
 `scripts/copilot_probe.py` keeps one report, `~/.copilot/hooks/state/copilot-probe.json`, of the Copilot behaviours the chief port depends on. Every item is `verified`, `unsupported` or `unknown`; a result recorded on another CLI version drops back to `unknown` (its old status stays as evidence), so re-run it after every `copilot update` and on every new machine.
 
 ```powershell
-python scripts\copilot_probe.py run           # static checks only: version and flags, spends nothing
-python scripts\copilot_probe.py run --live    # plus one copilot -p request in a throwaway trusted folder
-python scripts\copilot_probe.py record composer_keys_doorbell verified --evidence "what you saw"
-python scripts\copilot_probe.py report        # print the stored report
+.venv\Scripts\python.exe scripts\copilot_probe.py run           # static checks only: version and flags, spends nothing
+.venv\Scripts\python.exe scripts\copilot_probe.py run --live    # plus one copilot -p request in a throwaway trusted folder
+.venv\Scripts\python.exe scripts\copilot_probe.py record composer_keys_doorbell verified --evidence "what you saw"
+.venv\Scripts\python.exe scripts\copilot_probe.py report        # print the stored report
 ```
 
 The live leg installs repo-level hooks (`.github/hooks/probe.json`) in a temp git folder, trusted for that run through `COPILOT_ALLOW_ALL=true`. They log every event, inject a nonce through `sessionStart` and block the first `agentStop`. That run settles four items: `-p` hook firing, `sessionStart` `additionalContext` reaching the model, `agentStop` `decision: block` forcing another turn, and `session.usage_record` carrying `inputTokens` / `maxPromptTokens` in the session's `events.jsonl`. A second request installs a `preToolUse` hook that denies every tool call and asks for a shell command that would create a file: the file staying absent settles whether `permissionDecision: deny` stops the call. The interactive-only items (composer keys for the doorbell, a mid-turn `/compact <focus>` running at turn end, `/remote on` from the launcher, a background shell waking the agent, `ask_user` under autopilot, interactive hook firing, `--session-id` resume) need a live TUI and are recorded by hand with `record`.

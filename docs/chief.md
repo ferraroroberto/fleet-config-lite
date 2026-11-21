@@ -13,23 +13,23 @@ It is written for any model behind Copilot. It gives one table from what woke th
 The chief calls one CLI, `skills/_lib/chief_ops.py`, and acts only on the `KEY=value` lines it prints to stdout. Breadcrumbs go to stderr. A refused write exits 2 with `ERROR: ...` on stderr and leaves the state file as it was.
 
 ```powershell
-python skills\_lib\chief_ops.py plan show
-python skills\_lib\chief_ops.py plan add <repo>#<N> "<title>" [--status S] [--model M] [--kind K]
-python skills\_lib\chief_ops.py plan lane <repo> building|gate|idle|waiting [--item "#N"]
-python skills\_lib\chief_ops.py plan ask "<question>" --ref <repo>#<N> --option "Label::why" ...
-python skills\_lib\chief_ops.py plan prune             # drop merged rows
-python skills\_lib\chief_ops.py note "<one line>" [--kind K] [--ref <repo>#<N>]
-python skills\_lib\chief_ops.py inbox [--count]     # claim pending mailbox events
-python skills\_lib\chief_ops.py ack <id> [<id> ...]  # retire handled events
-python skills\_lib\chief_managed.py mark <sid> <repo> <number>
-python skills\_lib\chief_ops.py board | sessions | chief-sid
-python skills\_lib\chief_ops.py dispatch <repo> <N> [--mode start|yolo] [--model M] [--brief-file F]
-python skills\_lib\chief_ops.py open <project> [--message-file F]
-python skills\_lib\chief_ops.py file <repo> --title T --body-file F
-python skills\_lib\chief_ops.py say <sid> --file brief.md --verify
-python skills\_lib\chief_ops.py exchange <sid> | stop <sid> [--kill]
-python skills\_lib\chief_ops.py issues <repo>#<N> ...
-python skills\_lib\chief_ops.py verify <repo> --expect mr-open|merged [--branch B]
+.venv\Scripts\python.exe skills\_lib\chief_ops.py plan show
+.venv\Scripts\python.exe skills\_lib\chief_ops.py plan add <repo>#<N> "<title>" [--status S] [--model M] [--kind K]
+.venv\Scripts\python.exe skills\_lib\chief_ops.py plan lane <repo> building|gate|idle|waiting [--item "#N"]
+.venv\Scripts\python.exe skills\_lib\chief_ops.py plan ask "<question>" --ref <repo>#<N> --option "Label::why" ...
+.venv\Scripts\python.exe skills\_lib\chief_ops.py plan prune             # drop merged rows
+.venv\Scripts\python.exe skills\_lib\chief_ops.py note "<one line>" [--kind K] [--ref <repo>#<N>]
+.venv\Scripts\python.exe skills\_lib\chief_ops.py inbox [--count]     # claim pending mailbox events
+.venv\Scripts\python.exe skills\_lib\chief_ops.py ack <id> [<id> ...]  # retire handled events
+.venv\Scripts\python.exe skills\_lib\chief_managed.py mark <sid> <repo> <number>
+.venv\Scripts\python.exe skills\_lib\chief_ops.py board | sessions | chief-sid
+.venv\Scripts\python.exe skills\_lib\chief_ops.py dispatch <repo> <N> [--mode start|yolo] [--model M] [--brief-file F]
+.venv\Scripts\python.exe skills\_lib\chief_ops.py open <project> [--message-file F]
+.venv\Scripts\python.exe skills\_lib\chief_ops.py file <repo> --title T --body-file F
+.venv\Scripts\python.exe skills\_lib\chief_ops.py say <sid> --file brief.md --verify
+.venv\Scripts\python.exe skills\_lib\chief_ops.py exchange <sid> | stop <sid> [--kill]
+.venv\Scripts\python.exe skills\_lib\chief_ops.py issues <repo>#<N> ...
+.venv\Scripts\python.exe skills\_lib\chief_ops.py verify <repo> --expect mr-open|merged [--branch B]
 ```
 
 Launcher calls go to app-launcher-lite on the webapp port its own `config/config.json` sets (`webapp.port`, default 8465; read by `skills/_lib/lite_ports.py` from the sibling `app-launcher-lite` checkout, or from the file `FLEET_LITE_CONFIG` names, so a Lite running beside another launcher is the one addressed; `--base-url` overrides; any non-loopback host is refused). A launcher that stays silent prints `UNCONFIRMED=...` and one that refuses the connection prints `UNREACHABLE=...`; neither is folded into a verdict. Forge reads go through `glab` against `<namespace>/<repo>` on GitLab. The namespace is app-launcher-lite's `gitlab_group` (`GET /api/config` on loopback); when that is empty, the checkout's own `origin` remote names it, and `--owner` overrides both on `issues`, `verify` and `merge`. `dispatch`'s owner check, `drain` and `sweep` resolve it the same way. When no source names one, the read is `OWNER=unknown` (`issues` exits 1, `verify` prints `STATUS=UNKNOWN`, `merge` prints `MERGE=unknown`), never a 404 that reads as "no such issue". When `glab` is missing or signed out, `issues` prints an `error:` row for the ref and `verify` prints `STATUS=UNKNOWN`.

@@ -1,2 +1,11 @@
 __pycache__/
 *.pyc
+
+# Virtual environment — no trailing slash: when .venv is a junction, git for
+# Windows sees a link rather than a directory, so `.venv/` would not match it.
+.venv
+venv
+
+# App-launcher and session scratch
+.launcher-tmp/
+tmp/

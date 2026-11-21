@@ -26,7 +26,7 @@ class GuardedWriterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "nested" / "out.txt"
             rf.make_dirs(target.parent)
-            rf.save_text(target, "héllo\n")
+            rf.save_text(target, "héllo\n", encoding="utf-8")
             self.assertEqual(target.read_text(encoding="utf-8"), "héllo\n")
             rf.save_bytes(target, b"\x00\x01")
             self.assertEqual(target.read_bytes(), b"\x00\x01")

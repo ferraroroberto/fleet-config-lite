@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
+from no_window import NO_WINDOW  # noqa: E402
 from runtime_files import make_dirs, save_bytes  # noqa: E402
 
 BUNDLED_CLASSIFIER = Path(__file__).resolve().parent / "classify_e2e.py"
@@ -44,10 +45,6 @@ CLASSIFIER_REL = Path("scripts/classify_e2e.py")
 SUITE_REL = Path("tests/e2e")
 _WEB_DEP = re.compile(r"\b(fastapi|flask|uvicorn|starlette)\b", re.IGNORECASE)
 _STREAMLIT_DEP = re.compile(r"\bstreamlit\b", re.IGNORECASE)
-
-# Suppress console flashes when a console-less parent (a tray, a scheduled
-# task) spawns us on Windows; harmless 0 elsewhere.
-NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 
 def _sha1(path: Path) -> Optional[str]:

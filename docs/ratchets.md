@@ -57,9 +57,9 @@ Enabled rules: `no-window` (hooks and skills spawn processes on Windows),
 `subprocess-timeout` (a `subprocess.run/call/check_call/check_output` passes
 `timeout=`, or carries a `# subprocess-timeout-exempt: <reason>` marker for a
 child that is meant to run unbounded) and `browser-per-iteration` (a Playwright
-browser or context opened inside a loop). `secret-compare`
-and `git-wrapper` stay off — the repo has no secret-compare or git helper for
-them to route through. There is no `[e2e]` router table, so the baseline file
+browser or context opened inside a loop) and `git-wrapper` (every `git` spawn goes
+through `skills/_lib/git_run.py`, which sets `GIT_OPTIONAL_LOCKS=0`). `secret-compare`
+stays off — the repo has no secret-compare helper for it to route through. There is no `[e2e]` router table, so the baseline file
 needs no `tier` rule.
 
 ## docs

@@ -52,6 +52,7 @@ from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
 from audit_lint import NEUTRAL, clean, lint_entry, parse_rules, sections
+from git_run import run_git  # noqa: E402
 from issue_host import (  # noqa: E402
     cli_for,
     comment_args,
@@ -66,8 +67,7 @@ from issue_host import (  # noqa: E402
     normalise_issues,
     parse_owner_repo,
 )
-
-NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+from no_window import NO_WINDOW  # noqa: E402
 
 SKILL_DIR = Path(__file__).resolve().parent
 HOME_DIR = SKILL_DIR.parents[1]  # skills/prompt-audit -> the checkout root
@@ -556,7 +556,7 @@ def _run(cmd: List[str], cwd: Optional[str] = None, timeout: int = 120) -> subpr
 def resolve_repo(repo_path: Path) -> Tuple[str, str]:
     """(host, owner/repo) from `git remote get-url origin`."""
     try:
-        r = _run(["git", "remote", "get-url", "origin"], cwd=str(repo_path))
+        r = run_git(["-C", str(repo_path), "remote", "get-url", "origin"], timeout=120)
         url = r.stdout.strip() if r.returncode == 0 else ""
     except (OSError, subprocess.SubprocessError):
         url = ""

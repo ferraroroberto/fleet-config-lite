@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+from no_window import NO_WINDOW  # noqa: E402
 from runtime_files import save_text  # noqa: E402
 
 if sys.platform == "win32":  # emoji-safe output under piped/redirected capture
@@ -169,10 +170,9 @@ def make_print(
             f"--print-to-pdf={pdf_path}",
             out.resolve().as_uri(),
         ]
-        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=120,
-            creationflags=creationflags,
+            creationflags=NO_WINDOW,
         )
         if result.returncode != 0 or not pdf_path.is_file():
             raise SystemExit(

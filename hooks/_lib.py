@@ -28,9 +28,14 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict
+
+# The one NO_WINDOW for the hooks tree: a hook spawns with no console of its own, so an
+# unsuppressed child flashes a window on screen.
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 _CAMEL_BOUNDARY = re.compile(r"(?<!^)(?=[A-Z])")
 

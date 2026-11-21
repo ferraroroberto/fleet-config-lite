@@ -30,14 +30,15 @@ class Declaration(unittest.TestCase):
     def test_only_rules_with_a_matching_helper_are_enabled(self) -> None:
         fleet = tomllib.loads((REPO_ROOT / ".fleet.toml").read_text(encoding="utf-8"))
         table = fleet["conventions_ratchet"]
-        # secret-compare and git-wrapper refuse to run without a declared helper, and
-        # this repo has none.
+        # secret-compare and git-wrapper refuse to run without a declared helper: this repo
+        # has the ported git wrapper and no secret-compare helper.
         self.assertEqual(
             set(table["rules"]),
-            {"no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "browser-per-iteration", "state-literal", "state-set-repeat", "state-write"},
+            {"no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "browser-per-iteration", "state-literal", "state-set-repeat", "state-write", "git-wrapper"},
         )
         self.assertNotIn("secret_helpers", table)
-        self.assertNotIn("git_wrappers", table)
+        self.assertEqual(table["git_wrappers"], ["skills/_lib/git_run.py"])
+        self.assertTrue((REPO_ROOT / table["git_wrappers"][0]).is_file())
 
 
 class RealRepoRatchet(unittest.TestCase):

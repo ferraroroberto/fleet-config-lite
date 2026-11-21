@@ -2,7 +2,7 @@
 
 The lite counterpart of fleet-config's ``chief_handover_sessionstart.py``,
 ``chief_waiter_stop.py`` and ``block_askuserquestion_chief.py``, in one module
-the installer registers for three Copilot events (``chief-guard.template.json``
+the installer registers for four Copilot events (``chief-guard.template.json``
 passes the event as ``argv[1]``). Each behaviour was verified live on Copilot
 CLI 1.0.112 by ``scripts/copilot_probe.py``: ``sessionStart`` ``additionalContext``
 reaches the model, ``agentStop`` ``decision: block`` forces another turn, and
@@ -25,6 +25,13 @@ reaches the model, ``agentStop`` ``decision: block`` forces another turn, and
   folder or the full fleet's checkout) and name lite's own skills in the
   reason, because on a PC that also runs the full fleet ``/issue-start`` can resolve
   to that fleet's GitHub skill.
+- ``userPromptSubmitted``, a session app-launcher-lite's session-host lists: when the
+  prompt carries a skill this checkout also ships, expanded from somewhere else (the
+  full fleet's user-scope skills folder on a shared PC), return ``modifiedPrompt`` with
+  that skill block holding this checkout's ``SKILL.md`` instead. The swap happens in the
+  prompt itself, before the first model turn, so no model has to choose between the
+  skill it was handed and a later redirect. On a dedicated machine the skill already
+  comes from this checkout and the prompt is left alone.
 
 Who is the chief: a launcher session (``APP_LAUNCHER_SESSION_ID``) whose working
 directory is a fleet-config-lite checkout and whose id ``chief_ops.py chief-sid``
@@ -48,6 +55,7 @@ from typing import Any, Dict, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _lib  # noqa: E402
 import chief_inbox  # noqa: E402
+import session_state  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 CHIEF_OPS = REPO / "skills" / "_lib" / "chief_ops.py"
@@ -66,6 +74,13 @@ NOTIFY_RE = re.compile(r"\bnotify_complete\b", re.IGNORECASE)
 # merely contains the letters is not.
 STATEMENT_SPLIT_RE = re.compile(r"&&|\|\||[;|\r\n]")
 GH_STATEMENT_RE = re.compile(r"""^\s*(?:&\s*)?['"]?(?:[^\s'"]*[\\/])?gh(?:\.exe)?['"]?(?:\s|$)""", re.IGNORECASE)
+# Copilot CLI 1.0.114 hands userPromptSubmitted a skill invocation already expanded:
+# `<skill-context name="X">`, `Base directory for this skill: <dir>`, the SKILL.md body
+# without its frontmatter, then `ARGUMENTS: <args>` and `</skill-context>`.
+SKILL_BLOCK_RE = re.compile(
+    r'<skill-context name="(?P<name>[\w-]+)">\s*Base directory for this skill: (?P<base>[^\r\n]+)'
+    r'.*?(?:\nARGUMENTS: (?P<args>[^\r\n]*)\r?\n)?</skill-context>', re.DOTALL)
+FRONTMATTER_RE = re.compile(r"\A---\r?\n.*?\r?\n---\r?\n", re.DOTALL)
 HANDOVER_FILENAME = "chief-handover.md"
 # The handover is prose the chief wrote for itself; past this it is truncated, newest kept.
 HANDOVER_MAX_CHARS = 24000
@@ -254,7 +269,44 @@ def on_pre_tool_use(payload: Dict[str, Any], sid: str) -> Optional[Dict[str, Any
                                    "permissionDecisionReason": why}}
 
 
-HANDLERS = {"sessionStart": on_session_start, "agentStop": on_agent_stop, "preToolUse": on_pre_tool_use}
+def _same_dir(a: Path, b: Path) -> bool:
+    return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
+
+
+def lite_skill_swap(prompt: str) -> Optional[str]:
+    """The prompt with a foreign copy of one of this checkout's skills replaced by lite's, else None."""
+    match = SKILL_BLOCK_RE.search(prompt)
+    if not match:
+        return None
+    name = match.group("name")
+    skill_dir = REPO / "skills" / name
+    skill_md = skill_dir / "SKILL.md"
+    if not skill_md.is_file() or _same_dir(Path(match.group("base").strip()), skill_dir):
+        return None
+    try:
+        body = FRONTMATTER_RE.sub("", skill_md.read_text(encoding="utf-8"), count=1).strip()
+    except OSError as exc:
+        _log(f"lite's {name} skill unreadable ({type(exc).__name__}); prompt left as handed")
+        return None
+    block = f'<skill-context name="{name}">\nBase directory for this skill: {skill_dir}\n\n{body}\n\n\n'
+    if match.group("args") is not None:
+        block += f"ARGUMENTS: {match.group('args')}\n"
+    block += "</skill-context>"
+    _log(f"/{name} expanded from {match.group('base').strip()}; swapped for {skill_dir}")
+    return prompt[:match.start()] + block + prompt[match.end():]
+
+
+def on_user_prompt(payload: Dict[str, Any], sid: str) -> Optional[Dict[str, Any]]:
+    if not sid:
+        return None
+    swapped = lite_skill_swap(str(payload.get("prompt") or ""))
+    if swapped is None or not session_state.lite_session(sid):
+        return None
+    return {"modifiedPrompt": swapped}
+
+
+HANDLERS = {"sessionStart": on_session_start, "agentStop": on_agent_stop, "preToolUse": on_pre_tool_use,
+            "userPromptSubmitted": on_user_prompt}
 
 
 def main() -> None:

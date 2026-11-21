@@ -15,7 +15,9 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from unittest import mock
 
@@ -156,6 +158,53 @@ class GuardTests(unittest.TestCase):
         self.assertIsNone(chief_guard.on_pre_tool_use(self._shell("gh issue view 5"), "lane-1"))
 
 
+def foreign_skill_prompt(name: str = "issue-start", args: str = "135 --brief C:/briefs/b.md") -> str:
+    """A prompt shaped as Copilot CLI 1.0.114 hands userPromptSubmitted a skill another tree expanded."""
+    base = "C:/Users/u/.copilot/skills/" + name
+    return (f'The user explicitly invoked the "/{name}" skill. Follow its instructions now.\n\n'
+            f'<skill-context name="{name}">\nBase directory for this skill: {base}\n\n'
+            f"Additional skill files available if needed (use as directed by SKILL.md):\n  - {base}/evals/x.md\n\n"
+            f"# {name}\n\nRun gh issue view and notify_complete.\n\n\nARGUMENTS: {args}\n</skill-context>")
+
+
+class SkillSwapTests(unittest.TestCase):
+    def setUp(self) -> None:
+        hosted = mock.patch.object(chief_guard.session_state, "lite_session", return_value=True)
+        self.lite_session = hosted.start()
+        self.addCleanup(hosted.stop)
+
+    def test_a_foreign_issue_skill_is_swapped_for_lites_in_a_lite_session(self) -> None:
+        out = chief_guard.on_user_prompt({"prompt": foreign_skill_prompt()}, "lane-1")
+        prompt = out["modifiedPrompt"]
+        skill_dir = chief_guard.REPO / "skills" / "issue-start"
+        self.assertTrue(prompt.startswith('The user explicitly invoked the "/issue-start" skill.'))
+        self.assertIn(f"Base directory for this skill: {skill_dir}\n", prompt)
+        self.assertIn("# issue-start (lite, GitLab)", prompt)
+        self.assertNotIn("name: issue-start", prompt)
+        self.assertNotIn(".copilot/skills", prompt)
+        self.assertNotIn("notify_complete", prompt)
+        self.assertTrue(prompt.endswith("\n\n\nARGUMENTS: 135 --brief C:/briefs/b.md\n</skill-context>"))
+        self.lite_session.assert_called_once_with("lane-1")
+
+    def test_a_skill_invoked_without_arguments_keeps_that_shape(self) -> None:
+        prompt = foreign_skill_prompt("issue-finish").replace("\nARGUMENTS: 135 --brief C:/briefs/b.md", "")
+        swapped = chief_guard.on_user_prompt({"prompt": prompt}, "lane-1")["modifiedPrompt"]
+        self.assertNotIn("ARGUMENTS:", swapped)
+        self.assertIn(str(chief_guard.REPO / "skills" / "issue-finish"), swapped)
+
+    def test_prompts_lite_already_owns_or_does_not_ship_are_left_alone(self) -> None:
+        own = foreign_skill_prompt().replace("C:/Users/u/.copilot/skills/issue-start",
+                                             str(chief_guard.REPO / "skills" / "issue-start"))
+        for prompt in (own, foreign_skill_prompt("design-review"), "/issue-start 5", "fix the button", ""):
+            self.assertIsNone(chief_guard.on_user_prompt({"prompt": prompt}, "lane-1"), prompt[:60])
+        self.lite_session.assert_not_called()
+
+    def test_a_session_lites_host_does_not_list_keeps_its_skill(self) -> None:
+        self.lite_session.return_value = False
+        self.assertIsNone(chief_guard.on_user_prompt({"prompt": foreign_skill_prompt()}, "full-fleet-1"))
+        self.assertIsNone(chief_guard.on_user_prompt({"prompt": foreign_skill_prompt()}, ""))
+
+
 class EntryPointTests(unittest.TestCase):
     def test_pre_tool_use_entry_point_denies_ask_user_for_a_managed_lane(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -178,9 +227,37 @@ class EntryPointTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0)
         self.assertEqual(json.loads(proc.stdout)["permissionDecision"], "deny")
 
-    def test_template_registers_the_three_events_on_this_module(self) -> None:
+    def test_user_prompt_entry_point_swaps_the_skill_for_a_session_lites_host_lists(self) -> None:
+        class Host(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802 -- http.server's handler name
+                body = json.dumps({"sessions": [{"session_id": "lane-1"}]}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *_args) -> None:
+                pass
+
+        server = HTTPServer(("127.0.0.1", 0), Host)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        url = f"http://127.0.0.1:{server.server_port}/api/sessions"
+        for sid, swapped in (("lane-1", True), ("other-1", False)):
+            env = {**os.environ, "FLEET_LITE_SESSION_HOST": url, "APP_LAUNCHER_SESSION_ID": sid, "PYTHONUTF8": "1"}
+            proc = subprocess.run([sys.executable, str(REPO / "hooks" / "chief_guard.py"), "userPromptSubmitted"],
+                                  input=json.dumps({"sessionId": "cop-1", "prompt": foreign_skill_prompt()}),
+                                  capture_output=True, text=True, timeout=30, env=env, creationflags=NO_WINDOW)
+            self.assertEqual(proc.returncode, 0)
+            if swapped:
+                self.assertIn("# issue-start (lite, GitLab)", json.loads(proc.stdout)["modifiedPrompt"])
+            else:
+                self.assertEqual(proc.stdout.strip(), "")
+
+    def test_template_registers_the_four_events_on_this_module(self) -> None:
         hooks = json.loads((REPO / "hooks" / "chief-guard.template.json").read_text(encoding="utf-8"))["hooks"]
-        self.assertEqual(set(hooks), {"sessionStart", "agentStop", "preToolUse"})
+        self.assertEqual(set(hooks), {"sessionStart", "userPromptSubmitted", "agentStop", "preToolUse"})
         for event, entries in hooks.items():
             self.assertTrue(entries[0]["powershell"].endswith(f"/hooks/chief_guard.py' {event}"))
 

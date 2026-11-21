@@ -8,6 +8,13 @@
         "timeoutSec": 30
       }
     ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "powershell": "& '{{PYTHON}}' '{{REPO}}/hooks/chief_guard.py' userPromptSubmitted",
+        "timeoutSec": 30
+      }
+    ],
     "agentStop": [
       {
         "type": "command",

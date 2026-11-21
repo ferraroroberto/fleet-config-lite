@@ -75,6 +75,8 @@ ITEMS: Dict[str, tuple] = {
     "usage_record_context": ("events.jsonl session.usage_record carries inputTokens and maxPromptTokens", "live"),
     "pre_tool_use_deny": ("preToolUse permissionDecision deny stops the tool call", "live"),
     "hooks_fire_interactive": ("an interactive TUI session fires the four hooks", "manual"),
+    "prompt_hook_replaces_skill": ("in an interactive session userPromptSubmitted gets a skill invocation already "
+                                   "expanded, and its modifiedPrompt replaces it", "manual"),
     "resume_session_id_keeps_context": ("-p --session-id resumes with context kept", "manual"),
     "composer_keys_doorbell": ("composer keys Backspace, Ctrl-U, Enter clear and submit the doorbell line", "manual"),
     "compact_queued_midturn": ("/compact <focus> typed mid-turn runs at turn end", "manual"),

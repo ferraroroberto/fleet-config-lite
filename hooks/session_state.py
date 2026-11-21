@@ -42,6 +42,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _lib  # noqa: E402
 import chief_inbox  # noqa: E402
 
+# Appended, not inserted: skills/_lib must never shadow a hook module of the same name.
+sys.path.append(str(Path(__file__).resolve().parents[1] / "skills" / "_lib"))
+import lite_ports  # noqa: E402
+
 STATE_FILENAME = "sessions-state.json"
 
 _PRUNE_AFTER = timedelta(hours=24)
@@ -227,9 +231,9 @@ def apply_event(payload: Dict[str, Any], event: str) -> None:
 # On a machine that also runs the full fleet the installer passes this flag, so the
 # hook records only sessions app-launcher-lite itself launched (see lite_session).
 LITE_SESSIONS_ONLY_FLAG = "--lite-sessions-only"
-# app-launcher-lite's session-host list; the env var overrides it for another port.
+# app-launcher-lite's session-host list, on the port its config.json sets
+# (`lite_ports`); this env var names the whole list URL instead.
 LITE_SESSION_HOST_ENV = "FLEET_LITE_SESSION_HOST"
-DEFAULT_LITE_SESSION_HOST = "http://127.0.0.1:8466/sessions"
 # A loopback list read; a host slower than this is treated as unreachable.
 LITE_HOST_TIMEOUT_S = 1.5
 
@@ -242,7 +246,7 @@ def lite_session(launcher_sid: str) -> bool:
     """
     if not launcher_sid:
         return False
-    url = os.environ.get(LITE_SESSION_HOST_ENV, "").strip() or DEFAULT_LITE_SESSION_HOST
+    url = os.environ.get(LITE_SESSION_HOST_ENV, "").strip() or lite_ports.session_host_url()
     try:
         with urllib.request.urlopen(url, timeout=LITE_HOST_TIMEOUT_S) as resp:  # noqa: S310 -- loopback list
             data = json.loads(resp.read().decode("utf-8"))

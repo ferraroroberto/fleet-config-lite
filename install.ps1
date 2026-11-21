@@ -14,7 +14,8 @@
 #    helpers through .venv\Scripts\python.exe), unless -SkipVenv.
 # 5. A fresh-machine checklist (Copilot CLI, glab and its sign-in for the GitLab
 #    host, whether git
-#    reaches GitLab with no prompt, the venv, app-launcher-lite's session-host),
+#    reaches GitLab with no prompt, the venv, app-launcher-lite's session-host on the
+#    port its config.json sets),
 #    unless -SkipChecklist.
 #
 # Shared machine: when ~/.copilot/skills or ~/.agents/skills is a link into
@@ -293,11 +294,20 @@ if (-not $SkipChecklist) {
         }
     }
     if (Test-Path $venvPython) { Write-Host '[ok] venv' } else { Write-Host '[missing] venv: re-run without -SkipVenv' }
-    try {
-        Invoke-WebRequest -Uri 'http://127.0.0.1:8466/sessions' -UseBasicParsing -TimeoutSec 2 | Out-Null
-        Write-Host '[ok] app-launcher-lite session-host answers on :8466'
-    } catch {
-        Write-Host '[unknown] app-launcher-lite session-host not reachable on :8466 (start its tray)'
+    # The session-host port is app-launcher-lite's own setting (config/config.json, or the
+    # file FLEET_LITE_CONFIG names); lite_ports.py is the one reader every caller shares.
+    $portsScript = Join-Path $repo 'skills\_lib\lite_ports.py'
+    $hostUrl = [string](& $python $portsScript session-host-url 2>$null | Select-Object -First 1)
+    if ($hostUrl -notmatch '^http://127\.0\.0\.1:(\d+)/sessions$') {
+        Write-Host '[unknown] app-launcher-lite session-host port not read (lite_ports.py did not answer)'
+    } else {
+        $hostPort = $Matches[1]
+        try {
+            Invoke-WebRequest -Uri $hostUrl -UseBasicParsing -TimeoutSec 2 | Out-Null
+            Write-Host "[ok] app-launcher-lite session-host answers on :$hostPort"
+        } catch {
+            Write-Host "[unknown] app-launcher-lite session-host not reachable on :$hostPort (start its tray)"
+        }
     }
     Write-Host '[next] restart any running Copilot CLI session, then run: python scripts\copilot_probe.py run --live'
 }

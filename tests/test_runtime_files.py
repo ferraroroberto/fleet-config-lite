@@ -1,4 +1,4 @@
-"""Hermetic tests for skills/_lib/runtime_files.py (stdlib unittest, no deps).
+"""Hermetic tests for the guarded writer behind skills/_lib/runtime_files.py (stdlib unittest, no deps).
 
 Run:  python -m unittest discover -s tests -v
 
@@ -8,6 +8,7 @@ one is refused before any byte or folder is created.
 
 from __future__ import annotations
 
+import ast
 import sys
 import tempfile
 import unittest
@@ -17,6 +18,7 @@ LIB_DIR = Path(__file__).resolve().parents[1] / "skills" / "_lib"
 sys.path.insert(0, str(LIB_DIR))
 
 import runtime_files as rf  # noqa: E402
+from fleet_core import runtime_files as core  # noqa: E402
 
 
 class GuardedWriterTests(unittest.TestCase):
@@ -24,7 +26,7 @@ class GuardedWriterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "nested" / "out.txt"
             rf.make_dirs(target.parent)
-            rf.save_text(target, "héllo\n")
+            rf.save_text(target, "héllo\n", encoding="utf-8")
             self.assertEqual(target.read_text(encoding="utf-8"), "héllo\n")
             rf.save_bytes(target, b"\x00\x01")
             self.assertEqual(target.read_bytes(), b"\x00\x01")
@@ -52,6 +54,25 @@ class GuardedWriterTests(unittest.TestCase):
 
     def test_non_code_folder_inside_the_repo_is_allowed(self):
         self.assertEqual(rf.checked(rf.REPO_ROOT / "docs" / "x.md"), (rf.REPO_ROOT / "docs" / "x.md").resolve())
+
+
+class OneGuardTests(unittest.TestCase):
+    def test_the_flat_module_is_the_ported_guard_not_a_copy(self) -> None:
+        for name in rf.__all__:
+            with self.subTest(name=name):
+                self.assertIs(getattr(rf, name), getattr(core, name))
+
+    def test_only_the_ported_module_defines_the_guard(self) -> None:
+        lib = LIB_DIR
+        offenders = []
+        for path in sorted(lib.rglob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            defines = any(isinstance(n, ast.FunctionDef) and n.name == "checked" for n in ast.walk(tree)) or any(
+                isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "CODE_FOLDERS" for t in n.targets)
+                for n in ast.walk(tree))
+            if defines and path != lib / "fleet_core" / "runtime_files.py":
+                offenders.append(path.relative_to(lib).as_posix())
+        self.assertEqual(offenders, [], "a second guarded writer lets two code-folder sets disagree")
 
 
 if __name__ == "__main__":

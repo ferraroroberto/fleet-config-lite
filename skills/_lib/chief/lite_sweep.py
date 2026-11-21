@@ -19,21 +19,18 @@ registry and the active-issue markers under `~/.copilot/hooks/state`) or named
 from __future__ import annotations
 
 import argparse
-import json
-import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import active_issue
 import chief_managed
 import issue_host
 import worktree_claim
+from glab_run import Glab, GlabError, merge_requests
 from worktree_residue import WT_SEP
 
 from . import chief_sweep, launcher
-
-Glab = Callable[[List[str]], subprocess.CompletedProcess]
 
 
 def normalise_mrs(rows: Any) -> Optional[List[Dict[str, Any]]]:
@@ -50,14 +47,8 @@ def gitlab_mr_lookup(remote_url: str, branch: str, glab: Glab = launcher.run_gla
     if not project:
         return None
     try:
-        res = glab(["mr", "list", "--repo", project, "--source-branch", branch, "--all", "--output", "json"])
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return None
-    if res.returncode != 0:
-        return None
-    try:
-        return normalise_mrs(json.loads(res.stdout or ""))
-    except ValueError:
+        return normalise_mrs(merge_requests(project, branch, glab))
+    except GlabError:
         return None
 
 

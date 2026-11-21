@@ -22,8 +22,7 @@ from typing import Optional, Tuple
 
 import chief_plan
 import gate_evidence
-import runtime_files
-from fleet_core import hooks_state
+from fleet_core import hooks_state, runtime_files
 
 from . import compact, copilot_context, launcher, rails
 
@@ -82,8 +81,8 @@ def _queue_compact(base_url: str, sid: str, focus: str, marker: Path) -> int:
         print(f"NOT_QUEUED reason={delivery['reason'] or delivery['error']}")
         return 2
     try:
-        runtime_files.make_dirs(marker.parent)
-        runtime_files.save_text(marker, str(int(time.time())))
+        runtime_files.make_dirs(marker.parent, parents=True, exist_ok=True)
+        runtime_files.save_text(marker, str(int(time.time())), encoding="utf-8")
     except (OSError, ValueError) as exc:
         print(f"ℹ️ could not write the queued marker ({exc}); the stop hook may hold once more")
     print(f"COMPACT_QUEUED sid={sid[:8]} verdict={delivery['reason'] or 'submitted'} "

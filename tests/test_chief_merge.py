@@ -23,6 +23,7 @@ from unittest import mock
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "skills" / "_lib"))
 
+import glab_run  # noqa: E402
 from chief import lite_merge  # noqa: E402
 
 
@@ -192,7 +193,7 @@ class MrCreateTests(unittest.TestCase):
         self.assertEqual(self.run_create(glab), (1, "MR=unknown reason=glab not installed"))
 
     def test_the_default_runner_kills_glab_at_the_timeout(self) -> None:
-        with mock.patch.object(lite_merge.launcher.subprocess, "run",
+        with mock.patch.object(glab_run.subprocess, "run",
                                side_effect=subprocess.TimeoutExpired(["glab"], 2.0)) as run:
             code, out = self.run_create(None, timeout=2.0)
         self.assertEqual(code, 1)

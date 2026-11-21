@@ -22,17 +22,15 @@ from __future__ import annotations
 
 import argparse
 import functools
-import json
 import re
 import subprocess
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import chief_plan
+from glab_run import Glab, GlabError, first_message, glab_json, glab_output
 
 from . import journal, launcher, rails
-
-Glab = Callable[[List[str]], subprocess.CompletedProcess]
 
 # Opening a request is one API call (the branch is already pushed), so a minute
 # is generous; past it glab is waiting on something no one will answer.
@@ -40,54 +38,18 @@ MR_CREATE_TIMEOUT = 60.0
 _MR_URL = re.compile(r"https?://\S+/-/merge_requests/\d+")
 
 
-_BANNERS = frozenset({"ERROR", "WARNING", "WARN", "INFO"})
 _NEUTRAL_STATUSES = frozenset({"", "mergeable", "checking", "unchecked"})
-
-
-class Unknown(Exception):
-    """glab could not answer."""
-
-
-def first_message(text: str) -> str:
-    """The first useful line of glab's output.
-
-    glab boxes a failure under a banner line that is only the level word
-    (`ERROR`), so the first non-empty line carries no information.
-    """
-    for line in (text or "").splitlines():
-        line = line.strip()
-        if line and line.upper() not in _BANNERS:
-            return line
-    return ""
-
-
-def _glab(glab: Glab, args: List[str]) -> subprocess.CompletedProcess:
-    try:
-        return glab(args)
-    except FileNotFoundError as exc:
-        raise Unknown("glab not installed") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise Unknown("glab timed out") from exc
 
 
 def mr_state(project: str, branch: str, glab: Glab) -> Dict[str, Any]:
     """The merge request from `branch` as glab shows it (`state`, `iid`, `web_url`)."""
-    res = _glab(glab, ["mr", "view", branch, "--repo", project, "--output", "json"])
-    if res.returncode != 0:
-        raise Unknown(f"glab mr view failed: {first_message(res.stderr or res.stdout)[:200] or 'no detail'}")
-    try:
-        data = json.loads(res.stdout or "")
-    except ValueError as exc:
-        raise Unknown("unparseable glab mr view output") from exc
-    if not isinstance(data, dict):
-        raise Unknown("glab mr view output was not an object")
-    return data
+    return glab_json(["mr", "view", branch, "--repo", project, "--output", "json"], glab, expect=dict)
 
 
 def merge(project: str, branch: str, glab: Glab) -> Tuple[str, Dict[str, Any], str]:
     """`(verdict, merge request, reason)` for one merge attempt."""
-    res = _glab(glab, ["mr", "merge", branch, "--repo", project, "--auto-merge", "--squash",
-                       "--remove-source-branch", "--yes"])
+    res = glab_output(["mr", "merge", branch, "--repo", project, "--auto-merge", "--squash",
+                       "--remove-source-branch", "--yes"], glab)
     refusal = first_message(res.stderr or res.stdout)
     mr = mr_state(project, branch, glab)
     state = str(mr.get("state") or "")
@@ -142,7 +104,7 @@ def cmd_merge(args: argparse.Namespace, glab: Glab = launcher.run_glab) -> int:
     project = args.project or f"{owner}/{repo}"
     try:
         verdict, mr, reason = merge(project, args.branch, glab)
-    except Unknown as exc:
+    except GlabError as exc:
         print(f"MERGE=unknown reason={exc}")
         return 1
     tail = f" mr=!{mr.get('iid')}" + (f" url={mr['web_url']}" if mr.get("web_url") else "")

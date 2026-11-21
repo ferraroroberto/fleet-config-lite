@@ -24,12 +24,16 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 import tempfile
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _lib import state_dir  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -49,11 +53,6 @@ NOT_LAUNCHER = "not-launcher"
 NOT_DISPATCHED = "not-dispatched"
 UNDETERMINED = "undetermined"
 MANAGED = "managed"
-
-
-def state_dir() -> Path:
-    root = os.environ.get("COPILOT_HOOKS_STATE_DIR")
-    return Path(root) if root else Path.home() / ".copilot" / "hooks" / "state"
 
 
 def managed_row(sid: str, path: Optional[Path] = None) -> Tuple[Optional[Dict[str, Any]], str]:

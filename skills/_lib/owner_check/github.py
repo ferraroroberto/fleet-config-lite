@@ -21,8 +21,8 @@ names one explicitly. GitLab numbers issues and merge requests separately, so
 
 from __future__ import annotations
 
+import functools
 import json
-import subprocess
 import sys
 import tomllib
 import urllib.parse
@@ -35,11 +35,12 @@ if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 import git_run  # noqa: E402
 import gitlab_namespace  # noqa: E402
-from no_window import NO_WINDOW  # noqa: E402
+import glab_run  # noqa: E402
 
 from owner_check import block  # noqa: E402
 
 GITLAB_HOST = "gitlab.com"
+# Twice the default glab budget: a fleet-wide owner check chains many calls and a label write can be slow.
 GLAB_TIMEOUT_SECONDS = 60
 # A fleet-wide list is ~2 calls per repo plus one notes read per labelled issue.
 LIST_WORKERS = 6
@@ -53,17 +54,9 @@ class GhError(RuntimeError):
 
 def _glab(args: Sequence[str]) -> str:
     try:
-        proc = subprocess.run(  # noqa: S603 -- fixed executable, argv built here
-            ["glab", *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=GLAB_TIMEOUT_SECONDS, creationflags=NO_WINDOW, stdin=subprocess.DEVNULL,
-        )
-    except FileNotFoundError as exc:
-        raise GhError("glab not installed") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise GhError(f"glab timed out after {GLAB_TIMEOUT_SECONDS}s") from exc
-    if proc.returncode != 0:
-        raise GhError((proc.stderr or proc.stdout or f"glab {args[0]} failed").strip())
-    return proc.stdout
+        return glab_run.glab_text(args, functools.partial(glab_run.run_glab, timeout=GLAB_TIMEOUT_SECONDS))
+    except glab_run.GlabError as exc:
+        raise GhError(str(exc)) from exc
 
 
 def _json(args: Sequence[str]) -> Any:

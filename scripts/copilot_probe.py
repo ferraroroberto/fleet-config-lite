@@ -114,9 +114,10 @@ def load_report(path: Path) -> Dict[str, Any]:
 
 
 def save_report(path: Path, report: Dict[str, Any]) -> None:
-    runtime_files.make_dirs(path.parent)
+    runtime_files.make_dirs(path.parent, parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    runtime_files.save_text(tmp, json.dumps(report, indent=2, sort_keys=True) + "\n")
+    runtime_files.save_text(tmp, json.dumps(report, indent=2, sort_keys=True) + "\n",
+                            encoding="utf-8")
     os.replace(tmp, path)
 
 
@@ -193,14 +194,15 @@ def write_probe_folder(folder: Path, context_word: str, block_word: str,
                  "bash": f"'{python}' '{script}' hook {event} --dir '{folder.as_posix()}'"}]
         for event in events
     }
-    runtime_files.make_dirs(folder / ".github" / "hooks")
+    runtime_files.make_dirs(folder / ".github" / "hooks", parents=True, exist_ok=True)
     runtime_files.save_text(folder / ".github" / "hooks" / "probe.json",
-                            json.dumps({"version": 1, "hooks": hooks}, indent=2))
-    runtime_files.save_text(folder / "context.txt", f"The probe word is {context_word}.")
+                            json.dumps({"version": 1, "hooks": hooks}, indent=2), encoding="utf-8")
+    runtime_files.save_text(folder / "context.txt", f"The probe word is {context_word}.", encoding="utf-8")
     runtime_files.save_text(folder / "block.txt",
-                            f"Before stopping, reply with exactly this word on its own line: {block_word}")
+                            f"Before stopping, reply with exactly this word on its own line: {block_word}",
+                            encoding="utf-8")
     if deny:
-        runtime_files.save_text(folder / "deny.txt", "Denied by the capability probe.")
+        runtime_files.save_text(folder / "deny.txt", "Denied by the capability probe.", encoding="utf-8")
     run_git(["init", "-q", str(folder)], timeout=STATIC_TIMEOUT_SECONDS)
 
 

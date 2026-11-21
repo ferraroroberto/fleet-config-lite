@@ -19,19 +19,18 @@ repo that does not resolve, a git that fails, glab missing or signed out) is
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import gitlab_namespace
 from git_run import run_git
+from glab_run import Glab, GlabError, merge_requests
 
 from . import launcher
 
 EXPECTS = ("mr-open", "merged")
 REPOS_ROOT = launcher.REPOS_ROOT
-Glab = Callable[[List[str]], subprocess.CompletedProcess]
 
 
 class Unknown(Exception):
@@ -69,26 +68,6 @@ def tree_facts(repo_path: Path, default_branch: Optional[str]) -> Tuple[str, boo
     return current, clean, default_branch
 
 
-def merge_requests(project: str, branch: str, glab: Glab) -> List[Dict[str, Any]]:
-    """Every merge request from `branch` in any state, or Unknown when glab can't say."""
-    try:
-        res = glab(["mr", "list", "--repo", project, "--source-branch", branch, "--all",
-                    "--output", "json"])
-    except FileNotFoundError as exc:
-        raise Unknown("glab not installed") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise Unknown("glab timed out") from exc
-    if res.returncode != 0:
-        raise Unknown(f"glab mr list failed: {(res.stderr or '').strip()[:200] or 'no detail'}")
-    try:
-        data = json.loads(res.stdout or "[]")
-    except ValueError as exc:
-        raise Unknown("unparseable glab mr list output") from exc
-    if not isinstance(data, list):
-        raise Unknown("glab mr list output was not a list")
-    return [mr for mr in data if isinstance(mr, dict)]
-
-
 def evaluate(expect: str, current: str, clean: bool, default_branch: str,
              mr_states: List[str], branch: str) -> Tuple[str, Optional[str]]:
     """`(status, reason)` from gathered facts; pure."""
@@ -124,7 +103,7 @@ def run_verify(args: argparse.Namespace, glab: Glab = launcher.run_glab) -> Tupl
             raise Unknown("--branch is needed to find the lane's merge request")
         project = args.project or f"{_owner(args, repo_path)}/{repo_path.name}"
         states = [str(mr.get("state") or "") for mr in merge_requests(project, branch, glab)]
-    except Unknown as exc:
+    except (Unknown, GlabError) as exc:
         return "UNKNOWN", current, str(exc)
     status, reason = evaluate(args.expect, current, clean, default_branch, states, branch)
     return status, current, reason

@@ -148,7 +148,8 @@ def make_print(
     deck_title = first_title.group(1).split("·")[0].strip() if first_title else deck_dir.name
     out = deck_dir / out_name
     try:
-        save_text(out, PAGE_SHELL.format(title=f"{deck_title} · print", pages=pages), newline="")
+        save_text(out, PAGE_SHELL.format(title=f"{deck_title} · print", pages=pages),
+                  encoding="utf-8", newline="")
     except ValueError as exc:
         raise SystemExit(f"❌ {exc}") from exc
     log.info("✅ wrote %s (%d slide page(s)).", out, len(slides))

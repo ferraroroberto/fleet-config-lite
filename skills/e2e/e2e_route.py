@@ -193,7 +193,7 @@ def cmd_bootstrap(repo: Path, source: Path, force: bool) -> int:
                   "one (custom implementation - migrate deliberately with --force)")
             return 1
     try:
-        make_dirs(dest.parent)
+        make_dirs(dest.parent, parents=True, exist_ok=True)
         save_bytes(dest, source.read_bytes())
     except ValueError as exc:
         print(f"BOOTSTRAP=refused REASON={exc}")

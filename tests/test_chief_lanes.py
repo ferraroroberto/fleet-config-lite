@@ -9,6 +9,7 @@ to end without spawning a real lane. glab is replaced by a fake runner.
 
 from __future__ import annotations
 
+import argparse
 import contextlib
 import io
 import json
@@ -123,6 +124,54 @@ class DispatchTests(StubbedLauncherCase):
                            {"repo": "demo", "number": 7, "mode": "start", "model": "gpt-6-luna"})])
         row = json.loads((self.state / "chief-managed.json").read_text(encoding="utf-8"))["lane-1"]
         self.assertEqual((row["repo"], row["number"], row["dispatch_id"]), ("demo", 7, dispatch_id))
+
+    def test_context_is_sent_and_confirmed_by_the_launcher_echo(self) -> None:
+        self.stub.routes["/api/board/issues/start"] = (
+            200, {"session": {"session_id": "lane-1"}, "context": "long_context"})
+        code, out = _ops("dispatch", "demo", "7", "--context", "long_context", "--base-url", self.stub.url)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.stub.posts[0][1]["context"], "long_context")
+        self.assertIn("CONTEXT=long_context applied=yes", out)
+
+    def test_context_the_launcher_does_not_echo_is_not_confirmed(self) -> None:
+        self.stub.routes["/api/board/issues/start"] = (200, {"session": {"session_id": "lane-1"}})
+        code, out = _ops("dispatch", "demo", "7", "--context", "long_context", "--base-url", self.stub.url)
+        self.assertEqual(code, 0, out)
+        self.assertIn("CONTEXT=long_context applied=not-confirmed reason=launcher did not echo context", out)
+
+    def test_a_different_context_echo_is_not_confirmed(self) -> None:
+        self.stub.routes["/api/board/issues/start"] = (
+            200, {"session": {"session_id": "lane-1"}, "context": "default"})
+        code, out = _ops("dispatch", "demo", "7", "--context", "long_context", "--base-url", self.stub.url)
+        self.assertEqual(code, 0, out)
+        self.assertIn("CONTEXT=long_context applied=not-confirmed reason=launcher reported default", out)
+
+    def test_omitting_context_sends_none_and_prints_no_context_line(self) -> None:
+        self.stub.routes["/api/board/issues/start"] = (200, {"session": {"session_id": "lane-1"}})
+        code, out = _ops("dispatch", "demo", "7", "--base-url", self.stub.url)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("context", self.stub.posts[0][1])
+        self.assertNotIn("CONTEXT=", out)
+
+    def test_an_invalid_context_is_refused_locally_with_the_allowed_values(self) -> None:
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            with self.assertRaises(SystemExit) as raised:
+                chief_ops.main(["dispatch", "demo", "7", "--context", "bogus", "--base-url", self.stub.url])
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("default", err.getvalue())
+        self.assertIn("long_context", err.getvalue())
+        self.assertEqual(self.stub.posts, [])
+
+    def test_a_drain_dispatch_sends_no_context(self) -> None:
+        from chief import drain
+        self.stub.routes["/api/board/issues/start"] = (200, {"session": {"session_id": "lane-1"}})
+        brief = self.state / "brief.md"
+        brief.write_text("Scope.", encoding="utf-8")
+        args = argparse.Namespace(base_url=self.stub.url)
+        sid, out = drain._dispatch_one(args, {"repo": "demo", "ref": "#7", "model": None}, str(brief))
+        self.assertEqual(sid, "lane-1", out)
+        self.assertNotIn("context", self.stub.posts[0][1])
 
     def test_every_dispatch_brief_opens_with_this_checkouts_skills(self) -> None:
         self.stub.routes["/api/board/issues/start"] = (200, {"session": {"session_id": "lane-1"}})

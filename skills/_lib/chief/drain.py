@@ -412,7 +412,7 @@ def _dispatch_one(args: argparse.Namespace, row: Dict[str, Any], brief_file: str
     """`(sid, output)` from one guard-railed `cmd_dispatch`; `sid` None means it did not dispatch."""
     ns = argparse.Namespace(
         repo=row["repo"], number=int(row["ref"][1:]), mode="start", model=row.get("model"),
-        effort=None, brief_file=brief_file, yolo_confirmed=False,
+        effort=None, context=None, brief_file=brief_file, yolo_confirmed=False,
         allow_during_fleet_job=False, base_url=args.base_url,
     )
     buf = io.StringIO()

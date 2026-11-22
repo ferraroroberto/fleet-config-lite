@@ -75,6 +75,20 @@ def effort_outcome(requested: Optional[str], result: dict) -> Optional[str]:
     return f"EFFORT={requested} applied=not-confirmed reason={reason}"
 
 
+def context_outcome(requested: Optional[str], result: dict) -> Optional[str]:
+    """The `CONTEXT=` line for a dispatch that asked for a tier, else None.
+    Applied only when the launcher's response echoes the same tier: the launcher
+    echoes it only when it reached the Copilot command line, so silence is
+    reported as not confirmed, never as applied."""
+    if not requested:
+        return None
+    echoed = result.get("context")
+    if echoed == requested:
+        return f"CONTEXT={requested} applied=yes"
+    reason = "launcher did not echo context" if echoed is None else f"launcher reported {echoed}"
+    return f"CONTEXT={requested} applied=not-confirmed reason={reason}"
+
+
 def load_dispatch_brief(path: str) -> str:
     """A `--brief-file`'s text, or ValueError naming why it can't be one.
     Checked before any board read, so a bad brief never spawns a lane that
@@ -294,6 +308,8 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
     body["brief"] = brief
     if args.effort:
         body["effort"] = args.effort
+    if args.context:
+        body["context"] = args.context
     try:
         result = launcher._request(args.base_url, "/api/board/issues/start", method="POST", body=body,
                                    timeout=DISPATCH_TIMEOUT)
@@ -320,6 +336,9 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
     effort_line = effort_outcome(args.effort, result)
     if effort_line:
         print(effort_line)
+    context_line = context_outcome(args.context, result)
+    if context_line:
+        print(context_line)
     return 0
 
 
@@ -683,6 +702,9 @@ def add_lane_parsers(sub: argparse._SubParsersAction) -> None:
     d.add_argument("--model", default=None, help="a Copilot model id, sent as typed")
     d.add_argument("--effort", default=None, choices=("low", "medium", "high", "xhigh"),
                    help="reported applied only when the launcher echoes it")
+    d.add_argument("--context", default=None, choices=("default", "long_context"),
+                   help="the Copilot context tier for this launch only (the saved setting is untouched); "
+                        "reported applied only when the launcher echoes it")
     d.add_argument("--brief-file", default=None, help="lane brief, delivered in the launch command")
     d.add_argument("--yolo-confirmed", action="store_true")
     d.add_argument("--allow-during-fleet-job", action="store_true",

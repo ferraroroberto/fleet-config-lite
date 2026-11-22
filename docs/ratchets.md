@@ -57,7 +57,10 @@ Enabled rules: `no-window` (hooks and skills spawn processes on Windows),
 `subprocess-timeout` (a `subprocess.run/call/check_call/check_output` passes
 `timeout=`, or carries a `# subprocess-timeout-exempt: <reason>` marker for a
 child that is meant to run unbounded) and `browser-per-iteration` (a Playwright
-browser or context opened inside a loop) and `git-wrapper` (every `git` spawn goes
+browser or context opened inside a loop) and `host-identity` (a test reads the real
+account name or home folder, which passes on this machine and fails on another host; a
+test sets `HOME`/`USERPROFILE` to a temp folder and compares against that, or carries a
+`# host-identity-exempt: <reason>` marker for a guard over the live install) and `git-wrapper` (every `git` spawn goes
 through `skills/_lib/git_run.py`, which sets `GIT_OPTIONAL_LOCKS=0`). `secret-compare`
 stays off — the repo has no secret-compare helper for it to route through. There is no `[e2e]` router table, so the baseline file
 needs no `tier` rule.

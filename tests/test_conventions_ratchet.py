@@ -34,7 +34,7 @@ class Declaration(unittest.TestCase):
         # has the ported git wrapper and no secret-compare helper.
         self.assertEqual(
             set(table["rules"]),
-            {"no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "browser-per-iteration", "state-literal", "state-set-repeat", "state-write", "git-wrapper"},
+            {"no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "browser-per-iteration", "host-identity", "state-literal", "state-set-repeat", "state-write", "git-wrapper"},
         )
         self.assertNotIn("secret_helpers", table)
         self.assertEqual(table["git_wrappers"], ["skills/_lib/git_run.py"])

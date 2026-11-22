@@ -24,7 +24,7 @@ Downscaled from the private `fleet-config`; when a capability is missing here, p
 | `.github/skills/chief/` | The lite chief skill (about 8 KB, model-agnostic): the launcher spawns the chief in this checkout and types `/chief`. Copilot loads it as a project skill, so it exists only in this repo's sessions and is never junctioned into `~/.copilot/skills/` |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
 | `scripts/copilot_probe.py` | Re-runnable Copilot CLI capability probe: records each behaviour the chief port relies on as `verified`, `unsupported` or `unknown` per installed CLI version — see "Probing the installed Copilot CLI" below |
-| `scripts/*_ratchet.py`, `.*-ratchet-baseline.json` | Nine vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment, runtime write), test-time only — see "The ratchets" below |
+| `scripts/*_ratchet.py`, `.*-ratchet-baseline.json` | Ten vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment, runtime write, request budget), test-time only — see "The ratchets" below |
 | `install.ps1` | Wires everything into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -164,7 +164,7 @@ The hooks and skills are stdlib only; the test run's one dev dependency is ruff 
 
 ### The ratchets
 
-Nine vendored baseline-and-ratchet quality gates run inside `python -m unittest discover -s tests` — each wraps a `project-scaffolding` script byte-for-byte, declared in `.fleet.toml`'s `[vendored]` table and configured by its own table there. All nine share the same mechanics: existing debt sits in a committed `.<name>-ratchet-baseline.json`, baselined and never excluded, so nothing may grow past its baselined count; shrink a baseline with `--update-baseline`, grow one only with the explicit `--allow-additions` flag (which shows in review); and exit 3 — the detector could not run — always fails the test as **NOT CONFIRMED**, never folded into a pass. Every baseline here is empty today, and none needs anything beyond stdlib to run except the static ratchet.
+Ten vendored baseline-and-ratchet quality gates run inside `python -m unittest discover -s tests` — each wraps a `project-scaffolding` script byte-for-byte, declared in `.fleet.toml`'s `[vendored]` table and configured by its own table there. All ten share the same mechanics: existing debt sits in a committed `.<name>-ratchet-baseline.json`, baselined and never excluded, so nothing may grow past its baselined count; shrink a baseline with `--update-baseline`, grow one only with the explicit `--allow-additions` flag (which shows in review); and exit 3 — the detector could not run — always fails the test as **NOT CONFIRMED**, never folded into a pass. Every baseline here is empty today except the request budget's three, and none needs anything beyond stdlib to run except the static ratchet.
 
 | Ratchet | Fails on | Config table |
 |---|---|---|
@@ -177,6 +177,7 @@ Nine vendored baseline-and-ratchet quality gates run inside `python -m unittest 
 | docs | `README.md` over 40 KiB, or a new history marker (issue reference, dated heading, changelog heading) | `[docs_ratchet]` |
 | comment | a new issue reference inside a code comment | `[comment_ratchet]` |
 | runtime write | a Python write target resolving under a code folder (`hooks/`, `skills/`, `scripts/`) beyond the baseline; a new target it cannot resolve is NOT CONFIRMED | `[runtime_write_ratchet]` |
+| request budget | a rising count of fixed-rate browser polls, poll intervals under 2 s, undeclared fast server loops, directory scans in request handlers, default-pool submits, or a web app without the timing middleware | `[request_budget_ratchet]` |
 
 Per-ratchet specifics that don't fit the table — the static ratchet's extra prerequisites (ruff + Node's `npx` for `jscpd`), the guarded writer behind the runtime-write ratchet, and the rest — live in [docs/ratchets.md](docs/ratchets.md).
 

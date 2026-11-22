@@ -36,6 +36,8 @@ conventions_readers = { src = "scripts/conventions_readers.py", sha = "160b54e2e
 conventions_state = { src = "scripts/conventions_state.py", sha = "4d0b0ff30e23eb95c73c4b0b1517ec6a43d3a836", dest = "scripts/conventions_state.py" }
 instruction_frontmatter = { src = "scripts/instruction_frontmatter.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/instruction_frontmatter.py" }
 instruction_repeats = { src = "scripts/instruction_repeats.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/instruction_repeats.py" }
+request_budget_ratchet = { src = "scripts/request_budget_ratchet.py", sha = "564864cb95a8b416c16d1a1e1e9f31b9d5b2ec8e", dest = "scripts/request_budget_ratchet.py" }
+request_budget_scan = { src = "scripts/request_budget_scan.py", sha = "564864cb95a8b416c16d1a1e1e9f31b9d5b2ec8e", dest = "scripts/request_budget_scan.py" }
 [static_ratchet]
 enabled  = true
 baseline = ".static-ratchet-baseline.json"
@@ -183,6 +185,22 @@ enabled  = true
 baseline = ".comment-ratchet-baseline.json"
 docstrings      = true
 history_phrases = true
+
+# [request_budget_ratchet] -- the scaffold's baseline-and-ratchet stage for polling and
+# background-loop waste. The unit run (python -m unittest discover -s tests) includes
+# tests/test_request_budget_ratchet.py, which runs scripts/request_budget_ratchet.py: it
+# fails when a file's count for a rule rises above .request-budget-ratchet-baseline.json.
+# This repo serves no HTTP and ships no browser code under the default browser_paths, so
+# fixed-rate-poll, poll-floor, scan-per-request and timing-middleware have nothing to read:
+# scan-per-request prints OFF (no handler_dirs) and the poll helper and timing middleware
+# are not vendored. unwatched-loop and default-pool read the hooks and skills Python.
+# Existing hits are baselined, never excluded. Exit 3 (git unusable, a file that cannot be
+# read or parsed) fails the run as NOT CONFIRMED. Procedure: project-scaffolding
+# docs/request-budget-ratchet.md.
+[request_budget_ratchet]
+enabled      = true
+baseline     = ".request-budget-ratchet-baseline.json"
+server_paths = ["hooks/**", "skills/**", "scripts/**"]
 
 # [[state_machines]] -- the session status the Board shows. hooks/session_state.py owns the
 # SessionStatus type and the next_transition function; docs/session-state.md has the table.

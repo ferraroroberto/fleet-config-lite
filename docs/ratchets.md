@@ -1,8 +1,8 @@
 # Ratchets
 
-Per-ratchet specifics for the nine vendored baseline-and-ratchet quality gates
+Per-ratchet specifics for the ten vendored baseline-and-ratchet quality gates
 listed in the root [README.md](../README.md)'s "The ratchets" table. The
-mechanics shared by all nine — vendoring, the never-shrinks-except-by-review
+mechanics shared by all ten — vendoring, the never-shrinks-except-by-review
 baseline, exit 3 always failing as NOT CONFIRMED — are stated once there; this
 page only carries what differs per ratchet.
 
@@ -85,3 +85,16 @@ outside the vendored scripts and the two in the guarded writer. A destination a 
 guarantee is checked at runtime instead of claimed per call.
 The script's `--snapshot`/`--probe` pair is not wired: the tests are the gate
 run itself, so there is no stage outside them to bracket.
+
+## request budget
+
+Vendored with its sibling `scripts/request_budget_scan.py`, which holds the readers. This repo
+serves no HTTP and carries no browser code under the default `browser_paths`, so the poll
+rules (`fixed-rate-poll`, `poll-floor`), `timing-middleware` and `scan-per-request` have
+nothing to read: `scan-per-request` prints OFF because no `handler_dirs` is declared, and the
+scaffold's poll helper and timing middleware are not vendored. `server_paths` covers `hooks/`,
+`skills/` and `scripts/`, the Python this repo ships. The baseline holds three `unwatched-loop`
+hits, all short-lived command-line waits (a lock spin in the active-issue writer and the two
+wait-for-completion loops of the chief lane commands) rather than loops that run while nobody
+is looking, so none is declared under `[[request_budget.loops]]`. A loop that must run unwatched
+is declared there with its path, function, interval and reason.

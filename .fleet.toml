@@ -202,6 +202,26 @@ enabled      = true
 baseline     = ".request-budget-ratchet-baseline.json"
 server_paths = ["hooks/**", "skills/**", "scripts/**"]
 
+# Each loop below is a bounded wait inside a short-lived CLI call: it ends on its own deadline
+# or the moment its condition holds, and nothing runs it between calls.
+[[request_budget.loops]]
+path       = "skills/_lib/active_issue.py"
+function   = "state_lock"
+interval_s = 0.025
+why        = "retries a local mkdir lock for a few seconds; a longer wait stalls the marker write for a lock held for milliseconds"
+
+[[request_budget.loops]]
+path       = "skills/_lib/chief/lite_lanes.py"
+function   = "_await_first_turn"
+interval_s = 2
+why        = "reads one session's transcript until the dispatched message shows or --timeout passes; runs only while the dispatcher waits on that verdict"
+
+[[request_budget.loops]]
+path       = "skills/_lib/chief/lite_lanes.py"
+function   = "_poll_delivery"
+interval_s = 2
+why        = "reads one session's exchange marker until it is delivered or --timeout passes; runs only while the sender waits on that verdict"
+
 # [[state_machines]] -- the session status the Board shows. hooks/session_state.py owns the
 # SessionStatus type and the next_transition function; docs/session-state.md has the table.
 [[state_machines]]

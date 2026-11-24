@@ -1,4 +1,5 @@
 # BEGIN vendored-copies (generated from .fleet.toml [vendored]; edit the manifest, not this block)
+/scripts/clean_tree_ratchet.py
 /scripts/comment_ratchet.py
 /scripts/conventions_ratchet.py
 /scripts/conventions_readers.py
@@ -9,6 +10,7 @@
 /scripts/instruction_frontmatter.py
 /scripts/instruction_ratchet.py
 /scripts/instruction_repeats.py
+/scripts/port_host_ratchet.py
 /scripts/ratchet_baseline.py
 /scripts/request_budget_ratchet.py
 /scripts/request_budget_scan.py
@@ -18,5 +20,4 @@
 /scripts/structure_band.py
 /scripts/structure_layout.py
 /scripts/structure_ratchet.py
-/skills/e2e/classify_e2e.py
 # END vendored-copies

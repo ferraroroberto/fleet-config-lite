@@ -1,8 +1,8 @@
 # Ratchets
 
-Per-ratchet specifics for the ten vendored baseline-and-ratchet quality gates
+Per-ratchet specifics for the twelve vendored baseline-and-ratchet quality gates
 listed in the root [README.md](../README.md)'s "The ratchets" table. The
-mechanics shared by all ten — vendoring, the never-shrinks-except-by-review
+mechanics shared by all twelve — vendoring, the never-shrinks-except-by-review
 baseline, exit 3 always failing as NOT CONFIRMED — are stated once there; this
 page only carries what differs per ratchet.
 
@@ -92,3 +92,11 @@ nothing to read: `scan-per-request` prints OFF because no `handler_dirs` is decl
 scaffold's poll helper and timing middleware are not vendored. `server_paths` covers `skills/` and `scripts/`, the Python this repo ships.
 The baseline is empty and no loop is declared under `[[request_budget.loops]]`. A bounded wait
 that must run unwatched is declared there with its path, function, interval and reason.
+
+## port host
+
+Vendored with its sibling `scripts/ratchet_baseline.py`, which keeps the baseline in `.ratchets/port-host.json`. This repo serves nothing and reads no port, so no `resolvers` are declared and the baseline is empty. A port or machine-local host written in the tracked scripts or code is a hit; a file that comes to own port defaults is listed under `resolvers` before the baseline is touched, and the ports are read from its config instead. A hit that must stay carries a `port-host-exempt: <reason>` marker, printed on every run.
+
+## clean tree
+
+Vendored with the same `scripts/ratchet_baseline.py`; the baseline is `.ratchets/clean-tree.json`. This repo serves nothing, so the smoke is a command: Windows PowerShell runs `install.ps1 -SkipVenv -SkipChecklist` once, with `COPILOT_HOME` exported as the run's scratch folder and `USERPROFILE` set to the same folder inside the command. The profile is moved as well because the installer reads `~/.agents/skills` to detect a shared machine, and on a machine that also runs the full fleet that check would skip every write and leave the smoke empty. With both moved, the instructions copy and the skill junctions land in the scratch folder, so the real Copilot home is never touched, and the ratchet removes the scratch folder afterwards. The baseline is empty: the installer writes nothing under the checkout. A smoke that cannot start, times out or exits non-zero is exit 3, NOT CONFIRMED. The stage needs Windows PowerShell on the machine that runs the tests, like the installer itself.

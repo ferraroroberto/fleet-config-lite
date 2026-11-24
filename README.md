@@ -18,7 +18,7 @@ The Copilot hooks (session state, chief inbox, chief guard), the lite fleet chie
 | `skills/slides/` | Two-phase HTML presentation builder (briefing gate → component-composed, Chrome-verified 16:9 slides): `SKILL.md` + `assets/` (design system, component catalog, criteria, template, icon gallery, examples) + stdlib-only `scripts/` (`propagate.py` style fan-out, `make_print.py` print/PDF export), ported from the private life-os repo (`assets/` byte-for-byte; the scripts differ only in writing through `skills/_lib/runtime_files.py` and hiding the console window through `skills/_lib/no_window.py`) |
 | `skills/_lib/` | The helpers those skills share: `issue_host.py` (remote-URL parser, managed-issue marker, gh/glab issue argv), `git_run.py` (the one `git` spawn), `no_window.py`, and `runtime_files.py` with its `fleet_core/` guarded writer |
 | `global-instructions.md` | Canonical, agent-agnostic global instructions; `install.ps1` links it to `~/.copilot/copilot-instructions.md` (see "The global instructions file" below) |
-| `scripts/*_ratchet.py`, `.*-ratchet-baseline.json` | Ten vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment, runtime write, request budget), test-time only — see "The ratchets" below |
+| `scripts/*_ratchet.py`, `.*-ratchet-baseline.json`, `.ratchets/` | Twelve vendored baseline-and-ratchet quality gates (static, structure, instruction, doc-refs, dead-code, conventions, docs, comment, runtime write, request budget, port host, clean tree), test-time only — see "The ratchets" below |
 | `install.ps1` | Links the instructions file and the skills above into `%USERPROFILE%\.copilot\` (idempotent) |
 
 ## Install
@@ -113,7 +113,7 @@ The skills are stdlib only; the test run's one dev dependency is ruff (`requirem
 
 ### The ratchets
 
-Ten vendored baseline-and-ratchet quality gates run inside `python -m unittest discover -s tests` — each wraps a `project-scaffolding` script byte-for-byte, declared in `.fleet.toml`'s `[vendored]` table and configured by its own table there. All ten share the same mechanics: existing debt sits in a committed `.<name>-ratchet-baseline.json`, baselined and never excluded, so nothing may grow past its baselined count; shrink a baseline with `--update-baseline`, grow one only with the explicit `--allow-additions` flag (which shows in review); and exit 3 — the detector could not run — always fails the test as **NOT CONFIRMED**, never folded into a pass. Every baseline here is empty, the request budget's included. None needs anything beyond stdlib to run except the static ratchet.
+Twelve vendored baseline-and-ratchet quality gates run inside `python -m unittest discover -s tests` — each wraps a `project-scaffolding` script byte-for-byte, declared in `.fleet.toml`'s `[vendored]` table and configured by its own table there. All twelve share the same mechanics: existing debt sits in a committed baseline (`.<name>-ratchet-baseline.json`, or `.ratchets/<name>.json` for the newer ones), baselined and never excluded, so nothing may grow past its baselined count; shrink a baseline with `--update-baseline`, grow one only with the explicit `--allow-additions` flag (which shows in review); and exit 3 — the detector could not run — always fails the test as **NOT CONFIRMED**, never folded into a pass. Every baseline here is empty, the request budget's, port host's and clean tree's included. None needs anything beyond stdlib to run except the static ratchet.
 
 | Ratchet | Fails on | Config table |
 |---|---|---|
@@ -127,5 +127,7 @@ Ten vendored baseline-and-ratchet quality gates run inside `python -m unittest d
 | comment | a new issue reference inside a code comment | `[comment_ratchet]` |
 | runtime write | a Python write target resolving under a code folder (`skills/`, `scripts/`) beyond the baseline; a new target it cannot resolve is NOT CONFIRMED | `[runtime_write_ratchet]` |
 | request budget | a rising count of fixed-rate browser polls, poll intervals under 2 s, undeclared fast server loops, directory scans in request handlers, default-pool submits, or a web app without the timing middleware | `[request_budget_ratchet]` |
+| port host | a port or machine-local host literal (private-LAN or tailnet address) written in tracked scripts or code (this repo reads no port, so the baseline is empty) | `[port_host_ratchet]` |
+| clean tree | an install that adds, changes or deletes a tracked or untracked path: it runs `install.ps1` once against a scratch profile and compares `git status` before and after; NOT CONFIRMED when the smoke cannot run | `[clean_tree_ratchet]` |
 
 Per-ratchet specifics that don't fit the table — the static ratchet's extra prerequisites (ruff + Node's `npx` for `jscpd`), the guarded writer behind the runtime-write ratchet, and the rest — live in [docs/ratchets.md](docs/ratchets.md).

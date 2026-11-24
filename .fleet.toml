@@ -9,6 +9,9 @@ description  = "Lite fleet-config: audit, learning-log, prompt-audit and slides 
 shape        = "skills-governance"
 
 [vendored]
+port_host_ratchet = { src = "scripts/port_host_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/port_host_ratchet.py" }
+ratchet_baseline = { src = "scripts/ratchet_baseline.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/ratchet_baseline.py" }
+clean_tree_ratchet = { src = "scripts/clean_tree_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/clean_tree_ratchet.py" }
 static_ratchet = { src = "scripts/static_ratchet.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/static_ratchet.py" }
 structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/structure_ratchet.py" }
 structure_layout = { src = "scripts/structure_layout.py", sha = "a04abc7b3af872cbac974401dd0945587eac6cef", dest = "scripts/structure_layout.py" }
@@ -177,3 +180,31 @@ history_phrases = true
 enabled      = true
 baseline     = ".request-budget-ratchet-baseline.json"
 server_paths = ["skills/**", "scripts/**"]
+
+# [port_host_ratchet] -- the scaffold's baseline-and-ratchet lint for ports and
+# machine-local hosts written in tracked code. The unit run (python -m unittest discover
+# -s tests) includes tests/test_port_host_ratchet.py, which runs
+# scripts/port_host_ratchet.py: it fails when a file gains a port or private-network host
+# literal beyond .ratchets/port-host.json. This repo serves nothing and reads no port, so
+# it declares no `resolvers` and the baseline is empty; a file that does come to own port
+# defaults is listed under `resolvers`. Exit 3 (git unusable, a file that cannot be read or
+# parsed) fails the run as NOT CONFIRMED. Procedure: project-scaffolding
+# docs/port-host-ratchet.md.
+[port_host_ratchet]
+enabled = true
+
+# [clean_tree_ratchet] -- the scaffold's baseline-and-ratchet stage for "an install
+# leaves git status clean". The unit run includes tests/test_clean_tree_ratchet.py, which
+# runs scripts/clean_tree_ratchet.py: it records git status, runs the smoke once and fails
+# when the smoke added, changed or deleted a path beyond .ratchets/clean-tree.json. This
+# repo serves nothing, so the smoke is a command: install.ps1 with the user profile and
+# COPILOT_HOME both pointed at the run's scratch folder, so it links the instructions and
+# skills there and never touches the real Copilot home; the profile is moved too because
+# the installer reads ~/.agents/skills to detect a shared machine. Exit 3 (git unusable,
+# the smoke could not run or exited non-zero) fails the run as NOT CONFIRMED. Procedure:
+# project-scaffolding docs/clean-tree-ratchet.md.
+[clean_tree_ratchet]
+enabled      = true
+smoke        = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$env:USERPROFILE = $env:COPILOT_HOME; & ./install.ps1 -SkipVenv -SkipChecklist; exit $LASTEXITCODE"]
+data_dir_env = "COPILOT_HOME"
+timeout_s    = 120

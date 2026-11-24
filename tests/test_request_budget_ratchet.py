@@ -23,7 +23,7 @@ class Declaration(unittest.TestCase):
         table = fleet["request_budget_ratchet"]
         self.assertIs(table["enabled"], True)
         self.assertTrue((REPO_ROOT / table["baseline"]).is_file())
-        for name in ("request_budget_ratchet", "request_budget_scan"):
+        for name in ("request_budget_ratchet", "request_budget_scan", "ratchet_baseline"):
             entry = fleet["vendored"][name]
             self.assertEqual(entry["dest"], f"scripts/{name}.py")
             self.assertTrue((REPO_ROOT / entry["dest"]).is_file())

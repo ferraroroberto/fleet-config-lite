@@ -9,18 +9,18 @@ description  = "Lite fleet-config: Copilot CLI hooks, issue-workflow skills and 
 shape        = "skills-governance"
 
 [vendored]
-static_ratchet = { src = "scripts/static_ratchet.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/static_ratchet.py" }
-structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/structure_ratchet.py" }
+static_ratchet = { src = "scripts/static_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/static_ratchet.py" }
+structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/structure_ratchet.py" }
 structure_layout = { src = "scripts/structure_layout.py", sha = "a04abc7b3af872cbac974401dd0945587eac6cef", dest = "scripts/structure_layout.py" }
 structure_band = { src = "scripts/structure_band.py", sha = "3b708fd3c54ab7b93b08d489406c405762c83c41", dest = "scripts/structure_band.py" }
-instruction_ratchet = { src = "scripts/instruction_ratchet.py", sha = "a04abc7b3af872cbac974401dd0945587eac6cef", dest = "scripts/instruction_ratchet.py" }
-doc_refs_ratchet = { src = "scripts/doc_refs_ratchet.py", sha = "a68f6e49393f0ef0b94ab3c79f4338a50d89fa49", dest = "scripts/doc_refs_ratchet.py" }
-dead_code_ratchet = { src = "scripts/dead_code_ratchet.py", sha = "4d0b0ff30e23eb95c73c4b0b1517ec6a43d3a836", dest = "scripts/dead_code_ratchet.py" }
-conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "9f5d6b727d457616ce80e18db9f5a048ab53c3be", dest = "scripts/conventions_ratchet.py" }
-runtime_write_ratchet = { src = "scripts/runtime_write_ratchet.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/runtime_write_ratchet.py" }
+instruction_ratchet = { src = "scripts/instruction_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/instruction_ratchet.py" }
+doc_refs_ratchet = { src = "scripts/doc_refs_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/doc_refs_ratchet.py" }
+dead_code_ratchet = { src = "scripts/dead_code_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/dead_code_ratchet.py" }
+conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/conventions_ratchet.py" }
+runtime_write_ratchet = { src = "scripts/runtime_write_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/runtime_write_ratchet.py" }
 runtime_write_resolve = { src = "scripts/runtime_write_resolve.py", sha = "ce64203b017ba636c82737ee7f768c9ef6f422cd", dest = "scripts/runtime_write_resolve.py" }
-docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "78635aa74a92b9622326cb53992e0634fbaf6246", dest = "scripts/docs_ratchet.py" }
-comment_ratchet = { src = "scripts/comment_ratchet.py", sha = "1ed07ddb5002d4513adf0ce45f1bfaf68f3acc32", dest = "scripts/comment_ratchet.py" }
+docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/docs_ratchet.py" }
+comment_ratchet = { src = "scripts/comment_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/comment_ratchet.py" }
 classify_e2e = { src = "scripts/classify_e2e.py", sha = "3f15581f2188895a27f5a32083f7f7cdb7e93648", dest = "skills/e2e/classify_e2e.py" }
 
 # [static_ratchet] -- the scaffold's baseline-and-ratchet static analysis. The unit
@@ -36,11 +36,13 @@ conventions_readers = { src = "scripts/conventions_readers.py", sha = "9f5d6b727
 conventions_state = { src = "scripts/conventions_state.py", sha = "4d0b0ff30e23eb95c73c4b0b1517ec6a43d3a836", dest = "scripts/conventions_state.py" }
 instruction_frontmatter = { src = "scripts/instruction_frontmatter.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/instruction_frontmatter.py" }
 instruction_repeats = { src = "scripts/instruction_repeats.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/instruction_repeats.py" }
-request_budget_ratchet = { src = "scripts/request_budget_ratchet.py", sha = "564864cb95a8b416c16d1a1e1e9f31b9d5b2ec8e", dest = "scripts/request_budget_ratchet.py" }
+request_budget_ratchet = { src = "scripts/request_budget_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/request_budget_ratchet.py" }
 request_budget_scan = { src = "scripts/request_budget_scan.py", sha = "5ba99b0a04b1b5d7b3689f8f7a59bd3fe625a9bc", dest = "scripts/request_budget_scan.py" }
+ratchet_baseline = { src = "scripts/ratchet_baseline.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/ratchet_baseline.py" }
+
 [static_ratchet]
 enabled  = true
-baseline = ".static-ratchet-baseline.json"
+baseline = ".ratchets/static.json"
 
 # [structure_ratchet] -- the scaffold's baseline-and-ratchet layout stage. The unit
 # run (python -m unittest discover -s tests) includes tests/test_structure_ratchet.py,
@@ -53,7 +55,7 @@ baseline = ".static-ratchet-baseline.json"
 # docs/structure-ratchet.md.
 [structure_ratchet]
 enabled  = true
-baseline = ".structure-ratchet-baseline.json"
+baseline = ".ratchets/structure.json"
 
 # [instruction_ratchet] -- the scaffold's baseline-and-ratchet lint over instruction
 # files. The unit run (python -m unittest discover -s tests) includes
@@ -66,7 +68,7 @@ baseline = ".structure-ratchet-baseline.json"
 # project-scaffolding docs/instruction-ratchet.md.
 [instruction_ratchet]
 enabled    = true
-baseline   = ".instruction-ratchet-baseline.json"
+baseline   = ".ratchets/instruction.json"
 skill_dirs = ["skills", ".github/skills"]
 # `agents_pointer` stays off: it requires an AGENTS.md pointing at a CLAUDE.md, and this repo
 # has neither (the Copilot instructions are global-instructions.md).
@@ -86,7 +88,7 @@ repeated_text_words = 12
 [doc_refs_ratchet]
 enabled    = true
 trees    = true
-baseline   = ".doc-refs-ratchet-baseline.json"
+baseline   = ".ratchets/doc-refs.json"
 # Paths that live elsewhere on purpose: the instructions file a sibling repo carries,
 # and the repo-level hook file copilot_probe.py writes into its temp folder.
 allow_refs = [".github/copilot-instructions.md", ".github/hooks/probe.json"]
@@ -102,7 +104,7 @@ allow_refs = [".github/copilot-instructions.md", ".github/hooks/probe.json"]
 # as NOT CONFIRMED. Procedure: project-scaffolding docs/dead-code-ratchet.md.
 [dead_code_ratchet]
 enabled  = true
-baseline = ".dead-code-ratchet-baseline.json"
+baseline = ".ratchets/dead-code.json"
 # app-launcher-lite loads active_issue.py by path and calls classify_owner (its
 # active-issue claims contract), so the call site is outside this tree.
 # The other entries are names in byte-identical ports of fleet-config (docs/chief.md,
@@ -141,7 +143,7 @@ allow    = [
 # as NOT CONFIRMED. Procedure: project-scaffolding docs/conventions-ratchet.md.
 [conventions_ratchet]
 enabled     = true
-baseline    = ".conventions-ratchet-baseline.json"
+baseline    = ".ratchets/conventions.json"
 rules       = ["no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "browser-per-iteration", "host-identity", "state-literal", "state-set-repeat", "state-write", "git-wrapper", "path-sep"]
 git_wrappers = ["skills/_lib/git_run.py"]
 print_paths = ["hooks/", "skills/"]
@@ -155,7 +157,7 @@ print_paths = ["hooks/", "skills/"]
 # run left under a code folder. Mechanism: project-scaffolding docs/runtime-write-ratchet.md.
 [runtime_write_ratchet]
 enabled  = true
-baseline = ".runtime-write-ratchet-baseline.json"
+baseline = ".ratchets/runtime-write.json"
 # state_file() resolves to the hooks state dir (env override or the home folder), never the tree.
 safe_calls = ["state_file"]
 
@@ -169,7 +171,7 @@ safe_calls = ["state_file"]
 # run as NOT CONFIRMED. Procedure: project-scaffolding docs/docs-ratchet.md.
 [docs_ratchet]
 enabled  = true
-baseline = ".docs-ratchet-baseline.json"
+baseline = ".ratchets/docs.json"
 
 # [comment_ratchet] -- the scaffold's baseline-and-ratchet lint for history in code
 # comments. The unit run (python -m unittest discover -s tests) includes
@@ -182,7 +184,7 @@ baseline = ".docs-ratchet-baseline.json"
 # NOT CONFIRMED. Procedure: project-scaffolding docs/comment-ratchet.md.
 [comment_ratchet]
 enabled  = true
-baseline = ".comment-ratchet-baseline.json"
+baseline = ".ratchets/comment.json"
 docstrings      = true
 history_phrases = true
 
@@ -199,7 +201,7 @@ history_phrases = true
 # docs/request-budget-ratchet.md.
 [request_budget_ratchet]
 enabled      = true
-baseline     = ".request-budget-ratchet-baseline.json"
+baseline     = ".ratchets/request-budget.json"
 server_paths = ["hooks/**", "skills/**", "scripts/**"]
 
 # Each loop below is a bounded wait inside a short-lived CLI call: it ends on its own deadline

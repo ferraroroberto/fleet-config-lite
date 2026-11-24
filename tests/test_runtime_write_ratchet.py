@@ -24,7 +24,7 @@ class Declaration(unittest.TestCase):
         self.assertIs(table["enabled"], True)
         self.assertTrue((REPO_ROOT / table["baseline"]).is_file())
         # The ratchet imports its sibling resolver, so both copies must be present.
-        for name in ("runtime_write_ratchet", "runtime_write_resolve"):
+        for name in ("runtime_write_ratchet", "runtime_write_resolve", "ratchet_baseline"):
             entry = fleet["vendored"][name]
             self.assertEqual(entry["dest"], f"scripts/{name}.py")
             self.assertTrue((REPO_ROOT / entry["dest"]).is_file())

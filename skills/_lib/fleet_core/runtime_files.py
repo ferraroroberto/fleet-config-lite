@@ -10,10 +10,6 @@ a marker only claimed ("never beside the code") is enforced on every call.
 repo, so the live hooks-state folder resolves under ``hooks/``. It is gitignored runtime
 state, not code.
 
-The ``hooks/runtime_files`` package carries the subset the hooks use: the two import
-worlds cannot import each other (see ``no_window.py``), and
-``tests/repo/test_runtime_files.py`` holds the shared functions to the same code.
-
 stdlib only.
 """
 
@@ -22,7 +18,6 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-import sqlite3
 from pathlib import Path
 from typing import IO, Any, Union
 
@@ -127,19 +122,3 @@ def file_handler(path: PathLike, mode: str = "a", encoding: str | None = None) -
     target = checked(path)
     # runtime-write-exempt: caller-named log file; checked() above raises when it is under a code folder
     return logging.FileHandler(target, mode=mode, encoding=encoding)
-
-
-def connect_sqlite(path: PathLike, *args: Any, **kwargs: Any) -> sqlite3.Connection:
-    """``sqlite3.connect`` to the file ``path``; refuses a path under a code folder."""
-    target = checked(path)
-    # runtime-write-exempt: caller-named database; checked() above raises when it is under a code folder
-    return sqlite3.connect(target, *args, **kwargs)
-
-
-def connect_read_only(uri: str, *args: Any, **kwargs: Any) -> sqlite3.Connection:
-    """``sqlite3.connect`` to a ``file:`` URI that carries ``mode=ro``; any other URI is refused."""
-    if "mode=ro" not in uri.partition("?")[2].split("&"):
-        raise ValueError(f"Refusing a SQLite URI that is not mode=ro: {uri}")
-    kwargs["uri"] = True
-    # runtime-write-exempt: a read-only connection (mode=ro); nothing is written
-    return sqlite3.connect(uri, *args, **kwargs)

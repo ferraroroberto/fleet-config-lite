@@ -278,8 +278,10 @@ def lite_skill_swap(prompt: str) -> Optional[str]:
     if not match:
         return None
     name = match.group("name")
+    # path-sep-exempt: a skill folder name parsed from the prompt, never a path with separators
     skill_dir = REPO / "skills" / name
     skill_md = skill_dir / "SKILL.md"
+    # path-sep-exempt: the Windows base folder the agent prints, compared through realpath and normcase on the host that runs this hook
     if not skill_md.is_file() or _same_dir(Path(match.group("base").strip()), skill_dir):
         return None
     try:

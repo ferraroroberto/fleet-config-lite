@@ -36,7 +36,7 @@ def skills_importing_lib() -> list[Path]:
 class SkillDependencyDocsTests(unittest.TestCase):
     def test_detects_the_known_dependents(self):
         names = {p.name for p in skills_importing_lib()}
-        self.assertTrue({"e2e", "learning-log", "slides"} <= names, names)
+        self.assertTrue({"learning-log", "slides"} <= names, names)
 
     def test_dependents_name_the_lib_folder(self):
         for skill in skills_importing_lib():

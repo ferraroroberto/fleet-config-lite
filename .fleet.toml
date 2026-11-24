@@ -1,16 +1,24 @@
 # .fleet.toml — this repo's architecture-map card.
-# Lite fork: the GitHub Copilot CLI hooks, skills and installer behind app-launcher-lite's Board.
+# Lite fork: the skills and global instructions that sit beside app-launcher-lite's Copilot side.
 # Keep current: update in the same PR as any material change
 # (layer, port, role, one-line description, exposed services).
 layer        = "enabling"
 icon         = "🧰"
 display_name = "Fleet Config Lite"
-description  = "Lite fleet-config: Copilot CLI hooks, issue-workflow skills and installer."
+description  = "Lite fleet-config: audit, learning-log, prompt-audit and slides skills plus the global instructions."
 shape        = "skills-governance"
 
 [vendored]
+<<<<<<< HEAD
 static_ratchet = { src = "scripts/static_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/static_ratchet.py" }
 structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/structure_ratchet.py" }
+=======
+port_host_ratchet = { src = "scripts/port_host_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/port_host_ratchet.py" }
+ratchet_baseline = { src = "scripts/ratchet_baseline.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/ratchet_baseline.py" }
+clean_tree_ratchet = { src = "scripts/clean_tree_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/clean_tree_ratchet.py" }
+static_ratchet = { src = "scripts/static_ratchet.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/static_ratchet.py" }
+structure_ratchet = { src = "scripts/structure_ratchet.py", sha = "fe8cc1bdbd038ed65947186248df13072eceb25a", dest = "scripts/structure_ratchet.py" }
+>>>>>>> origin/main
 structure_layout = { src = "scripts/structure_layout.py", sha = "a04abc7b3af872cbac974401dd0945587eac6cef", dest = "scripts/structure_layout.py" }
 structure_band = { src = "scripts/structure_band.py", sha = "3b708fd3c54ab7b93b08d489406c405762c83c41", dest = "scripts/structure_band.py" }
 instruction_ratchet = { src = "scripts/instruction_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/instruction_ratchet.py" }
@@ -19,9 +27,14 @@ dead_code_ratchet = { src = "scripts/dead_code_ratchet.py", sha = "48db2132dab2d
 conventions_ratchet = { src = "scripts/conventions_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/conventions_ratchet.py" }
 runtime_write_ratchet = { src = "scripts/runtime_write_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/runtime_write_ratchet.py" }
 runtime_write_resolve = { src = "scripts/runtime_write_resolve.py", sha = "ce64203b017ba636c82737ee7f768c9ef6f422cd", dest = "scripts/runtime_write_resolve.py" }
+<<<<<<< HEAD
 docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/docs_ratchet.py" }
 comment_ratchet = { src = "scripts/comment_ratchet.py", sha = "48db2132dab2dfc38b6154948ca17fd1f4b9232f", dest = "scripts/comment_ratchet.py" }
 classify_e2e = { src = "scripts/classify_e2e.py", sha = "3f15581f2188895a27f5a32083f7f7cdb7e93648", dest = "skills/e2e/classify_e2e.py" }
+=======
+docs_ratchet = { src = "scripts/docs_ratchet.py", sha = "78635aa74a92b9622326cb53992e0634fbaf6246", dest = "scripts/docs_ratchet.py" }
+comment_ratchet = { src = "scripts/comment_ratchet.py", sha = "1ed07ddb5002d4513adf0ce45f1bfaf68f3acc32", dest = "scripts/comment_ratchet.py" }
+>>>>>>> origin/main
 
 # [static_ratchet] -- the scaffold's baseline-and-ratchet static analysis. The unit
 # run (python -m unittest discover -s tests) includes tests/test_static_ratchet.py,
@@ -68,8 +81,13 @@ baseline = ".ratchets/structure.json"
 # project-scaffolding docs/instruction-ratchet.md.
 [instruction_ratchet]
 enabled    = true
+<<<<<<< HEAD
 baseline   = ".ratchets/instruction.json"
 skill_dirs = ["skills", ".github/skills"]
+=======
+baseline   = ".instruction-ratchet-baseline.json"
+skill_dirs = ["skills"]
+>>>>>>> origin/main
 # `agents_pointer` stays off: it requires an AGENTS.md pointing at a CLAUDE.md, and this repo
 # has neither (the Copilot instructions are global-instructions.md).
 ci_expectations     = true
@@ -88,22 +106,29 @@ repeated_text_words = 12
 [doc_refs_ratchet]
 enabled    = true
 trees    = true
+<<<<<<< HEAD
 baseline   = ".ratchets/doc-refs.json"
 # Paths that live elsewhere on purpose: the instructions file a sibling repo carries,
 # and the repo-level hook file copilot_probe.py writes into its temp folder.
 allow_refs = [".github/copilot-instructions.md", ".github/hooks/probe.json"]
+=======
+baseline   = ".doc-refs-ratchet-baseline.json"
+# Paths that live elsewhere on purpose: the instructions file a sibling repo carries.
+allow_refs = [".github/copilot-instructions.md"]
+>>>>>>> origin/main
 
 # [dead_code_ratchet] -- the scaffold's baseline-and-ratchet lint for definitions nothing
 # references. The unit run (python -m unittest discover -s tests) includes
 # tests/test_dead_code_ratchet.py, which runs scripts/dead_code_ratchet.py: it fails when
 # a tracked Python file gains a function, class or method whose name appears nowhere else
 # in the tree, beyond .dead-code-ratchet-baseline.json. Every vendored file is declared
-# in [vendored] so its unused API is not reported as this repo's. Hooks and skill
+# in [vendored] so its unused API is not reported as this repo's. Skill
 # scripts are plain functions called by name, so no `allow` or `entry_decorators` is
 # needed. Exit 3 (git unusable, a .py file that cannot be read or parsed) fails the run
 # as NOT CONFIRMED. Procedure: project-scaffolding docs/dead-code-ratchet.md.
 [dead_code_ratchet]
 enabled  = true
+<<<<<<< HEAD
 baseline = ".ratchets/dead-code.json"
 # app-launcher-lite loads active_issue.py by path and calls classify_owner (its
 # active-issue claims contract), so the call site is outside this tree.
@@ -126,13 +151,17 @@ allow    = [
     "skills/_lib/git_run.py:run_git_bytes",
     "skills/_lib/worktree_residue.py:unregistered_siblings",
 ]
+=======
+baseline = ".dead-code-ratchet-baseline.json"
+allow    = []
+>>>>>>> origin/main
 
 # [conventions_ratchet] -- the scaffold's baseline-and-ratchet stage for fleet conventions
 # one AST rule can check. The unit run (python -m unittest discover -s tests) includes
 # tests/test_conventions_ratchet.py, which runs scripts/conventions_ratchet.py: it fails
 # when a file's count for an enabled rule rises above its entry in
-# .conventions-ratchet-baseline.json. Enabled: no-window (hooks and skills spawn on
-# Windows), logging-not-print (hooks/ and skills/ hold the library code) and
+# .conventions-ratchet-baseline.json. Enabled: no-window (skills spawn on
+# Windows), logging-not-print (skills/ holds the library code) and
 # no-drive-path (nothing here may name a machine's drive), subprocess-timeout (every
 # subprocess.run/call/check_* passes timeout=), host-identity (a test never reads the real
 # account name or home folder; it points HOME/USERPROFILE at a temp folder) and git-wrapper (every `git` spawn goes
@@ -146,7 +175,7 @@ enabled     = true
 baseline    = ".ratchets/conventions.json"
 rules       = ["no-window", "logging-not-print", "no-drive-path", "subprocess-timeout", "browser-per-iteration", "host-identity", "state-literal", "state-set-repeat", "state-write", "git-wrapper", "path-sep"]
 git_wrappers = ["skills/_lib/git_run.py"]
-print_paths = ["hooks/", "skills/"]
+print_paths = ["skills/"]
 
 # [runtime_write_ratchet] -- scripts/runtime_write_ratchet.py fails when a tracked
 # Python file gains a write target (open for writing, Path.write_*, mkdir, a log
@@ -157,9 +186,13 @@ print_paths = ["hooks/", "skills/"]
 # run left under a code folder. Mechanism: project-scaffolding docs/runtime-write-ratchet.md.
 [runtime_write_ratchet]
 enabled  = true
+<<<<<<< HEAD
 baseline = ".ratchets/runtime-write.json"
 # state_file() resolves to the hooks state dir (env override or the home folder), never the tree.
 safe_calls = ["state_file"]
+=======
+baseline = ".runtime-write-ratchet-baseline.json"
+>>>>>>> origin/main
 
 # [docs_ratchet] -- the scaffold's baseline-and-ratchet lint for the README and docs
 # convention. The unit run (python -m unittest discover -s tests) includes
@@ -195,39 +228,44 @@ history_phrases = true
 # This repo serves no HTTP and ships no browser code under the default browser_paths, so
 # fixed-rate-poll, poll-floor, scan-per-request and timing-middleware have nothing to read:
 # scan-per-request prints OFF (no handler_dirs) and the poll helper and timing middleware
-# are not vendored. unwatched-loop and default-pool read the hooks and skills Python.
+# are not vendored. unwatched-loop and default-pool read the skills Python.
 # Existing hits are baselined, never excluded. Exit 3 (git unusable, a file that cannot be
 # read or parsed) fails the run as NOT CONFIRMED. Procedure: project-scaffolding
 # docs/request-budget-ratchet.md.
 [request_budget_ratchet]
 enabled      = true
+<<<<<<< HEAD
 baseline     = ".ratchets/request-budget.json"
 server_paths = ["hooks/**", "skills/**", "scripts/**"]
+=======
+baseline     = ".request-budget-ratchet-baseline.json"
+server_paths = ["skills/**", "scripts/**"]
+>>>>>>> origin/main
 
-# Each loop below is a bounded wait inside a short-lived CLI call: it ends on its own deadline
-# or the moment its condition holds, and nothing runs it between calls.
-[[request_budget.loops]]
-path       = "skills/_lib/active_issue.py"
-function   = "state_lock"
-interval_s = 0.025
-why        = "retries a local mkdir lock for a few seconds; a longer wait stalls the marker write for a lock held for milliseconds"
+# [port_host_ratchet] -- the scaffold's baseline-and-ratchet lint for ports and
+# machine-local hosts written in tracked code. The unit run (python -m unittest discover
+# -s tests) includes tests/test_port_host_ratchet.py, which runs
+# scripts/port_host_ratchet.py: it fails when a file gains a port or private-network host
+# literal beyond .ratchets/port-host.json. This repo serves nothing and reads no port, so
+# it declares no `resolvers` and the baseline is empty; a file that does come to own port
+# defaults is listed under `resolvers`. Exit 3 (git unusable, a file that cannot be read or
+# parsed) fails the run as NOT CONFIRMED. Procedure: project-scaffolding
+# docs/port-host-ratchet.md.
+[port_host_ratchet]
+enabled = true
 
-[[request_budget.loops]]
-path       = "skills/_lib/chief/lite_lanes.py"
-function   = "_await_first_turn"
-interval_s = 2
-why        = "reads one session's transcript until the dispatched message shows or --timeout passes; runs only while the dispatcher waits on that verdict"
-
-[[request_budget.loops]]
-path       = "skills/_lib/chief/lite_lanes.py"
-function   = "_poll_delivery"
-interval_s = 2
-why        = "reads one session's exchange marker until it is delivered or --timeout passes; runs only while the sender waits on that verdict"
-
-# [[state_machines]] -- the session status the Board shows. hooks/session_state.py owns the
-# SessionStatus type and the next_transition function; docs/session-state.md has the table.
-[[state_machines]]
-name   = "session-status"
-module = "hooks/session_state.py"
-type   = "SessionStatus"
-derive = "next_transition"
+# [clean_tree_ratchet] -- the scaffold's baseline-and-ratchet stage for "an install
+# leaves git status clean". The unit run includes tests/test_clean_tree_ratchet.py, which
+# runs scripts/clean_tree_ratchet.py: it records git status, runs the smoke once and fails
+# when the smoke added, changed or deleted a path beyond .ratchets/clean-tree.json. This
+# repo serves nothing, so the smoke is a command: install.ps1 with the user profile and
+# COPILOT_HOME both pointed at the run's scratch folder, so it links the instructions and
+# skills there and never touches the real Copilot home; the profile is moved too because
+# the installer reads ~/.agents/skills to detect a shared machine. Exit 3 (git unusable,
+# the smoke could not run or exited non-zero) fails the run as NOT CONFIRMED. Procedure:
+# project-scaffolding docs/clean-tree-ratchet.md.
+[clean_tree_ratchet]
+enabled      = true
+smoke        = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$env:USERPROFILE = $env:COPILOT_HOME; & ./install.ps1 -SkipVenv -SkipChecklist; exit $LASTEXITCODE"]
+data_dir_env = "COPILOT_HOME"
+timeout_s    = 120

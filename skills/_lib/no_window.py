@@ -16,12 +16,6 @@ helper instead of repeating it. This module is that helper for the skill tier â€
 `sys.path.insert(0, str(Path(__file__).resolve().parent))` idiom) and
 `.claude/skills/*/*` (via its `parents[3] / "skills" / "_lib"` idiom).
 
-The hook tier has its own copy in `hooks/_lib.py` and deliberately does not
-import this one: `hooks/` and `skills/` are junctioned into the agent homes as
-two independent units, and a hook must stay importable on a bare system Python
-with nothing but its own directory on `sys.path`. `tests/run_acceptance.py`
-asserts the two definitions agree, so the duplication cannot drift.
-
 **Do not combine with `DETACHED_PROCESS`** â€” the two flags are mutually
 exclusive. A long-lived child that later needs
 `CTRL_BREAK_EVENT` combines this with `CREATE_NEW_PROCESS_GROUP` instead.

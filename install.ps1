@@ -1,35 +1,28 @@
-# install.ps1 - wire fleet-config-lite into GitHub Copilot CLI (user scope).
+# install.ps1 - wire fleet-config-lite's own skills and instructions into GitHub Copilot CLI (user scope).
+#
+# The Copilot hooks, the chief and the issue-workflow skills belong to app-launcher-lite's
+# copilot\ folder and are installed by its copilot\install.ps1; this installer writes none of them.
 #
 # What it writes, and where:
-# 1. Hook configs: renders hooks/session-state.template.json and
-#    hooks/chief-guard.template.json with this checkout's absolute path and a
-#    resolved Python executable, into %USERPROFILE%\.copilot\hooks\
-#    fleet-config-lite-<name>.json, and makes sure hooks\state exists.
-# 2. Instructions: links global-instructions.md to
+# 1. Instructions: links global-instructions.md to
 #    %USERPROFILE%\.copilot\copilot-instructions.md (symlink, else a marked copy),
 #    only when that path is free or already ours.
-# 3. Skills: junctions skills\<name> into %USERPROFILE%\.copilot\skills\<name>,
+# 2. Skills: junctions skills\<name> into %USERPROFILE%\.copilot\skills\<name>,
 #    only into a real folder and never over a skill this checkout does not own.
-# 4. This checkout's .venv (stdlib only; app-launcher-lite runs the chief
-#    helpers through .venv\Scripts\python.exe), unless -SkipVenv.
-# 5. A fresh-machine checklist (Copilot CLI, glab and its sign-in for the GitLab
-#    host, whether git
-#    reaches GitLab with no prompt, the venv, app-launcher-lite's session-host on the
-#    port its config.json sets),
-#    unless -SkipChecklist.
+# 3. This checkout's .venv (stdlib only; the audit and learning-log helpers run
+#    through .venv\Scripts\python.exe), unless -SkipVenv.
+# 4. A short checklist (Copilot CLI, glab, the venv) unless -SkipChecklist.
+# It also warns about what an older install of this repo left behind: hook configs and
+# skill links that app-launcher-lite's copilot\install.ps1 -Migrate removes.
 #
 # Shared machine: when ~/.copilot/skills or ~/.agents/skills is a link into
 # another tree, this PC also runs the full fleet. Then nothing is written that
 # would change other sessions: the skills and the instructions link are skipped
-# with a message, and the session-state hook is rendered with
-# --lite-sessions-only, so it records only sessions app-launcher-lite launched.
-# The chief-guard hooks are installed as usual; they act only for lite's chief
-# and its lanes and return at once for every other session.
+# with a message.
 # Any user-scope target that is itself a link into another tree (the Copilot
-# home, its hooks folder, a hook config, the skills folder) is never written
-# through: it is skipped with a message.
+# home, the skills folder) is never written through: it is skipped with a message.
 #
-# Re-run after moving the checkout or changing the templates. Idempotent.
+# Re-run after moving the checkout. Idempotent.
 #
 # NOTE for agents and future edits: ASCII only in this file - it can run
 # under Windows PowerShell 5.1, which chokes on BOM-less non-ASCII.
@@ -44,7 +37,6 @@ $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
 $copilotHome = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $env:USERPROFILE '.copilot' }
 $hooksDir = Join-Path $copilotHome 'hooks'
-$stateDir = Join-Path $hooksDir 'state'
 $skillsDir = Join-Path $copilotHome 'skills'
 $agentsSkillsDir = Join-Path (Join-Path $env:USERPROFILE '.agents') 'skills'
 
@@ -91,42 +83,14 @@ if (-not $python) {
     Write-Error 'No usable python.exe found (only the WindowsApps alias). Install Python and re-run.'
 }
 
-# --- render each hook config with absolute paths (forward slashes keep the
-# --- JSON free of escaping headaches). session-state feeds the Board; chief-guard
-# --- is the chief's handover, turn-end holds and ask_user deny.
-$hooksLink = Get-ForeignLink $hooksDir
-if ($hooksLink) {
-    Write-Host "[skip] hooks folder is a link into another tree, no hook written -> $hooksDir ($hooksLink)"
-} else {
-    New-Item -ItemType Directory -Force -Path $hooksDir, $stateDir | Out-Null
-    $scope = if ($shared) { ' --lite-sessions-only' } else { '' }
-    $hookTemplates = [ordered]@{
-        'session-state.template.json' = 'fleet-config-lite-session-state.json'
-        'chief-guard.template.json'   = 'fleet-config-lite-chief-guard.json'
-    }
-    foreach ($name in $hookTemplates.Keys) {
-        # Hyphens only in the filename: Copilot CLI 1.0.70 silently ignores hook
-        # files with more than one dot in the name (verified live).
-        $target = Join-Path $hooksDir $hookTemplates[$name]
-        $targetLink = Get-ForeignLink $target
-        if ($targetLink) {
-            Write-Host "[skip] hook config is a link into another tree -> $target ($targetLink)"
-            continue
-        }
-        $template = Get-Content (Join-Path $repo "hooks\$name") -Raw
-        $rendered = $template.Replace('{{PYTHON}}', ($python -replace '\\', '/')).Replace('{{REPO}}', ($repo -replace '\\', '/')).Replace('{{SCOPE}}', $scope)
-        # WriteAllText, not Set-Content: under Windows PowerShell 5.1 Set-Content's
-        # utf8 writes a BOM, and Copilot CLI 1.0.70 silently ignores BOM'd hook
-        # configs (verified live). WriteAllText emits BOM-less UTF-8 on every PS.
-        [System.IO.File]::WriteAllText($target, $rendered)
-        Write-Host "[ok] hook config -> $target"
-    }
-    if ($shared) {
-        Write-Host '     session-state records only sessions app-launcher-lite launched (--lite-sessions-only);'
-        Write-Host '     chief-guard acts only for lite''s chief and its lanes'
-    }
+# --- leftovers of the older install: this repo no longer ships hooks, but its old hook
+# --- configs still run this checkout's deleted files, and two session-state hooks would
+# --- race on one state file. Reported, never deleted: app-launcher-lite's installer owns the move.
+$oldHooks = @(Get-ChildItem -LiteralPath $hooksDir -Filter 'fleet-config-lite-*.json' -ErrorAction SilentlyContinue)
+if ($oldHooks.Count -gt 0) {
+    Write-Host "[warn] $($oldHooks.Count) hook config(s) from the older install of this repo remain in $hooksDir"
+    Write-Host '       run app-launcher-lite''s copilot\install.ps1 -Migrate to replace them with its own'
 }
-Write-Host "     python      -> $python"
 
 # --- global instructions
 # Never overwrite an instructions file this repo does not own. Ownership needs
@@ -229,9 +193,20 @@ $skillSources | ForEach-Object {
     }
 }
 
-# --- this checkout's venv: app-launcher-lite runs chief_managed.py and the owner
-# --- check through .venv\Scripts\python.exe and skips them when it is missing.
-# --- The helpers are stdlib only, so the venv holds nothing but the interpreter.
+# --- links a previous install made into this checkout's skills\ that no longer exist here
+# --- (the chief and issue-workflow skills moved to app-launcher-lite): reported, never deleted.
+if (-not $shared -and (Test-Path -LiteralPath $skillsDir)) {
+    foreach ($item in @(Get-ChildItem -LiteralPath $skillsDir -Force -ErrorAction SilentlyContinue)) {
+        $target = [string]($item.Target | Select-Object -First 1)
+        if ($item.LinkType -eq 'Junction' -and $target -and $target.StartsWith($repo, [StringComparison]::OrdinalIgnoreCase) -and -not (Test-Path -LiteralPath $target)) {
+            Write-Host "[warn] skill link points at a folder this repo no longer has -> $($item.FullName)"
+            Write-Host '       app-launcher-lite''s copilot\install.ps1 -Migrate replaces it with its own copy'
+        }
+    }
+}
+
+# --- this checkout's venv: the audit and learning-log helpers are stdlib only, so the
+# --- venv holds nothing but the interpreter.
 $venvPython = Join-Path $repo '.venv\Scripts\python.exe'
 if ($SkipVenv) {
     Write-Host '[skip] venv (-SkipVenv)'
@@ -242,10 +217,11 @@ if ($SkipVenv) {
     if (Test-Path $venvPython) { Write-Host "[ok] venv created -> $venvPython" } else { Write-Host '[missing] venv could not be created' }
 }
 
-# --- fresh-machine checklist: every line is ok, missing or unknown, never assumed
+# --- checklist: every line is ok or missing, never assumed. Git access to GitLab, the
+# --- session-host and the hooks are app-launcher-lite's checklist, not this one.
 if (-not $SkipChecklist) {
     Write-Host ''
-    Write-Host 'Fresh-machine checklist:'
+    Write-Host 'Checklist:'
     $copilot = Get-Command copilot -ErrorAction SilentlyContinue
     if ($copilot) {
         $version = (& $copilot.Source --version 2>$null | Select-Object -First 1)
@@ -253,65 +229,13 @@ if (-not $SkipChecklist) {
     } else {
         Write-Host '[missing] Copilot CLI: install it (winget install GitHub.Copilot), then run copilot login'
     }
-    # The GitLab host is the one the git-access check below asks about: the https GitLab
-    # remote of this checkout or a sibling. glab keeps one sign-in per host, so a bare
-    # `glab auth status` answers for glab's default host and misreports a self-hosted one.
-    $accessScript = Join-Path $repo 'skills\_lib\gitlab_git_access.py'
-    $access = @{}
-    $fixes = @()
-    foreach ($line in @(& $python $accessScript check --repo $repo 2>$null)) {
-        $key, $value = ([string]$line) -split '=', 2
-        if ($key -eq 'FIX') { $fixes += $value } else { $access[$key] = $value }
-    }
-    $gitlabHost = $access['HOST']
-    $glab = Get-Command glab -ErrorAction SilentlyContinue
-    if (-not $glab) {
-        Write-Host '[missing] glab: install it (winget install GLab.GLab), then run glab auth login'
-    } elseif (-not $gitlabHost) {
-        Write-Host '[unknown] glab sign-in not confirmed: no GitLab host is configured (no https GitLab remote found in this checkout or its sibling checkouts)'
+    if (Get-Command glab -ErrorAction SilentlyContinue) {
+        Write-Host '[ok] glab on PATH (sign-in: glab auth status --hostname <your GitLab host>)'
     } else {
-        # glab prints its status on stderr; under 'Stop', Windows PowerShell 5.1 turns that
-        # into a terminating NativeCommandError and the checklist dies here.
-        $ErrorActionPreference = 'Continue'
-        & $glab.Source auth status --hostname $gitlabHost *> $null
-        $ErrorActionPreference = 'Stop'
-        if ($LASTEXITCODE -eq 0) { Write-Host "[ok] glab signed in -> $gitlabHost" } else { Write-Host "[missing] glab is not signed in to ${gitlabHost}: run glab auth login --hostname $gitlabHost" }
-    }
-    # glab signed in does not mean git can reach GitLab: git asks its own credential
-    # helper, and a lane (prompts off) stops on its first fetch. Ask git itself. The
-    # fix is printed for the owner to run; this installer never edits git config.
-    switch ($access['GIT_ACCESS']) {
-        'ok' { Write-Host "[ok] git reaches GitLab without a prompt -> $($access['HOST'])" }
-        'missing' {
-            Write-Host "[missing] git cannot reach GitLab without a prompt ($($access['HOST'])): $($access['REASON'])"
-            Write-Host '          glab being signed in is not enough: git uses its own credential helper. Run this yourself (the installer never edits your git config):'
-            foreach ($fix in $fixes) { Write-Host "            $fix" }
-            Write-Host '          then re-run install.ps1; this line should read [ok]'
-        }
-        default {
-            $why = if ($access['REASON']) { $access['REASON'] } else { 'the check did not run' }
-            Write-Host "[unknown] git access to GitLab not confirmed: $why"
-        }
+        Write-Host '[missing] glab: install it (winget install GLab.GLab), then run glab auth login'
     }
     if (Test-Path $venvPython) { Write-Host '[ok] venv' } else { Write-Host '[missing] venv: re-run without -SkipVenv' }
-    # The session-host port is app-launcher-lite's own setting (config/config.json, or the
-    # file FLEET_LITE_CONFIG names); lite_ports.py is the one reader every caller shares.
-    $portsScript = Join-Path $repo 'skills\_lib\lite_ports.py'
-    $hostUrl = [string](& $python $portsScript session-host-url 2>$null | Select-Object -First 1)
-    if ($hostUrl -notmatch '^http://127\.0\.0\.1:(\d+)/sessions$') {
-        Write-Host '[unknown] app-launcher-lite session-host port not read (lite_ports.py did not answer)'
-    } else {
-        $hostPort = $Matches[1]
-        try {
-            Invoke-WebRequest -Uri $hostUrl -UseBasicParsing -TimeoutSec 2 | Out-Null
-            Write-Host "[ok] app-launcher-lite session-host answers on :$hostPort"
-        } catch {
-            Write-Host "[unknown] app-launcher-lite session-host not reachable on :$hostPort (start its tray)"
-        }
-    }
-    Write-Host '[next] restart any running Copilot CLI session, then run: python scripts\copilot_probe.py run --live'
 }
 
 Write-Host ''
-Write-Host 'Done. Restart any running Copilot CLI session to pick up the hooks.'
-Write-Host "State file will appear at: $stateDir\sessions-state.json"
+Write-Host 'Done. For the chief, the session hooks and the issue skills, install app-launcher-lite''s copilot\ folder.'

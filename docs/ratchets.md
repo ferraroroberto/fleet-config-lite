@@ -1,8 +1,8 @@
 # Ratchets
 
-Per-ratchet specifics for the ten vendored baseline-and-ratchet quality gates
+Per-ratchet specifics for the twelve vendored baseline-and-ratchet quality gates
 listed in the root [README.md](../README.md)'s "The ratchets" table. The
-mechanics shared by all ten — vendoring, the never-shrinks-except-by-review
+mechanics shared by all twelve — vendoring, the never-shrinks-except-by-review
 baseline, exit 3 always failing as NOT CONFIRMED — are stated once there; this
 page only carries what differs per ratchet.
 
@@ -42,17 +42,14 @@ No `port` is declared, so ports are not checked.
 ## dead-code
 
 Every vendored file is declared in `.fleet.toml`'s `[vendored]` table, so its
-unused API is not reported as this repo's own dead code. Hooks and skill
-scripts are plain functions called by name, so no `entry_decorators` is
-configured. `allow` lists the names a caller outside this tree uses:
-`classify_owner`, which app-launcher-lite loads by path, and the helpers in the
-byte-identical fleet-config ports (`docs/chief.md`, "Port provenance"), which
-cannot lose a name without failing their hash. The baseline is empty.
+unused API is not reported as this repo's own dead code. Skill scripts are
+plain functions called by name, so no `entry_decorators` is configured and
+`allow` is empty. The baseline is empty.
 
 ## conventions
 
-Enabled rules: `no-window` (hooks and skills spawn processes on Windows),
-`logging-not-print` (scoped to `hooks/` and `skills/`, the library code) and
+Enabled rules: `no-window` (skills spawn processes on Windows),
+`logging-not-print` (scoped to `skills/`, the library code) and
 `no-drive-path` (nothing here may name a machine's drive) and
 `subprocess-timeout` (a `subprocess.run/call/check_call/check_output` passes
 `timeout=`, or carries a `# subprocess-timeout-exempt: <reason>` marker for a
@@ -80,7 +77,7 @@ zero, so a docstring states the present-tense why too.
 Vendored with its sibling `scripts/runtime_write_resolve.py`, which the script
 imports. The default code folders apply. The baseline is empty and no `# runtime-write-exempt` marker sits
 outside the vendored scripts and the two in the guarded writer. A destination a caller names
-(a deck dir, `--out-dir`, the repo an e2e bootstrap targets) is written through
+(a deck dir, `--out-dir`) is written through
 `skills/_lib/runtime_files.py`, which raises when the resolved path is under a code folder, so the
 guarantee is checked at runtime instead of claimed per call.
 The script's `--snapshot`/`--probe` pair is not wired: the tests are the gate
@@ -92,9 +89,14 @@ Vendored with its sibling `scripts/request_budget_scan.py`, which holds the read
 serves no HTTP and carries no browser code under the default `browser_paths`, so the poll
 rules (`fixed-rate-poll`, `poll-floor`), `timing-middleware` and `scan-per-request` have
 nothing to read: `scan-per-request` prints OFF because no `handler_dirs` is declared, and the
-scaffold's poll helper and timing middleware are not vendored. `server_paths` covers `hooks/`,
-`skills/` and `scripts/`, the Python this repo ships. The baseline holds three `unwatched-loop`
-hits, all short-lived command-line waits (a lock spin in the active-issue writer and the two
-wait-for-completion loops of the chief lane commands) rather than loops that run while nobody
-is looking, so none is declared under `[[request_budget.loops]]`. A loop that must run unwatched
-is declared there with its path, function, interval and reason.
+scaffold's poll helper and timing middleware are not vendored. `server_paths` covers `skills/` and `scripts/`, the Python this repo ships.
+The baseline is empty and no loop is declared under `[[request_budget.loops]]`. A bounded wait
+that must run unwatched is declared there with its path, function, interval and reason.
+
+## port host
+
+Vendored with its sibling `scripts/ratchet_baseline.py`, which keeps the baseline in `.ratchets/port-host.json`. This repo serves nothing and reads no port, so no `resolvers` are declared and the baseline is empty. A port or machine-local host written in the tracked scripts or code is a hit; a file that comes to own port defaults is listed under `resolvers` before the baseline is touched, and the ports are read from its config instead. A hit that must stay carries a `port-host-exempt: <reason>` marker, printed on every run.
+
+## clean tree
+
+Vendored with the same `scripts/ratchet_baseline.py`; the baseline is `.ratchets/clean-tree.json`. This repo serves nothing, so the smoke is a command: Windows PowerShell runs `install.ps1 -SkipVenv -SkipChecklist` once, with `COPILOT_HOME` exported as the run's scratch folder and `USERPROFILE` set to the same folder inside the command. The profile is moved as well because the installer reads `~/.agents/skills` to detect a shared machine, and on a machine that also runs the full fleet that check would skip every write and leave the smoke empty. With both moved, the instructions copy and the skill junctions land in the scratch folder, so the real Copilot home is never touched, and the ratchet removes the scratch folder afterwards. The baseline is empty: the installer writes nothing under the checkout. A smoke that cannot start, times out or exits non-zero is exit 3, NOT CONFIRMED. The stage needs Windows PowerShell on the machine that runs the tests, like the installer itself.

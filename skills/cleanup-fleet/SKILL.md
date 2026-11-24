@@ -35,7 +35,7 @@ costs one issue's worth of credits, not a fleet's.
    ```
 
 5. **Work** the first `max` rows, sequentially, inside each repo:
-   - **easy** → run this repo's `/issue-yolo <N>` end-to-end (branch, build, gate, `/e2e`, MR, merge, land), with the **ship override** below.
+   - **easy** → run `/issue-yolo <N>` (the skill app-launcher-lite installs from its `copilot/` folder) end-to-end (branch, build, gate, `/e2e`, MR, merge, land), with the **ship override** below.
    - **hard** → run `/issue-start <N> now`, build, run the verification gate, then **stop before push** and hand back a plain-English summary of what changed and why, plus the ship override below for the human to apply when running `/issue-finish`.
 
    **Ship override (both paths).** `/issue-yolo` and `/issue-finish` default to `Closes #<N>`, which would auto-close the audit issue on merge and drop every unfixed item from the backlog (the next audit only reuses *open* managed issues). So:

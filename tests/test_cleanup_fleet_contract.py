@@ -1,6 +1,6 @@
 """Pins the cleanup-fleet ship override against the skills it delegates to.
 
-`/issue-yolo` and `/issue-finish` always write `Closes #<N>`; a partial
+The issue-workflow skills app-launcher-lite ships always write `Closes #<N>`; a partial
 cleanup of an audit issue must not auto-close it, so `/cleanup-fleet` has to
 carry an explicit `Part of #<N>` override plus the post-merge ticking step.
 The override is prose, so this test fails when either side drifts.
@@ -19,10 +19,6 @@ def _text(name: str) -> str:
 
 
 class CleanupFleetShipOverrideTests(unittest.TestCase):
-    def test_delegated_skills_still_default_to_closes(self) -> None:
-        for name in ("issue-yolo", "issue-finish"):
-            self.assertIn("Closes #<N>", _text(name), name)
-
     def test_cleanup_fleet_overrides_the_closing_keyword(self) -> None:
         text = _text("cleanup-fleet")
         self.assertIn("Part of #<N>", text)

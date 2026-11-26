@@ -111,6 +111,8 @@ h1 .hl { color: var(--accent); }
   font-size: 1.6cqw; color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .footer svg { width: 1.8cqw; height: 1.8cqw; flex: none; }
+/* main content block centred vertically: shares the leftover space with the footer */
+.slide > .push { margin-top: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -118,6 +120,7 @@ h1 .hl { color: var(--accent); }
 /* ==/slides:base== */
 
 /* Per-slide layout CSS goes below this line; it is NOT propagated. */
+/* Paste each component's CSS block from assets/components.md here verbatim, its slides:c anchors included; never edit inside one. */
 </style>
 </head>
 <body>
@@ -135,7 +138,7 @@ h1 .hl { color: var(--accent); }
   <h1>Title with exactly one <span class="hl">accent phrase</span></h1>
   <p class="thesis">One thesis line in muted ink, stating the slide's single idea.</p>
 
-  <!-- Slide content: compose from assets/components.md, sized in cqw. -->
+  <!-- Slide content: pick components from the chooser in assets/components.md; the main block takes class "push" to centre vertically. -->
 
   <div class="footer">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>

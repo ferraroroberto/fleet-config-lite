@@ -17,9 +17,9 @@ Checked on **every** slide, in **both themes**, with **reveals expanded** — re
 
 ## Build lessons baked in
 
-- Step-subline `max-width` scales with column count: ~13.5cqw at 7 cols, ~16 at 5, ~22–28 at 3.
+- Step-subline `max-width` scales with column count: ~13.5cqw at 7 cols, ~16 at 5, ~22–28 at 3 (the pipeline's `--pipeline-step-w` knob).
 - Sparse slides may scale type up; dense slides keep contract sizes.
-- Sparse slides can also rebalance instead: give the main content block `margin-top: auto` so the leftover space splits evenly with the footer's own auto margin (the examples' `s01` pipeline does this), rather than leaving one dead band above the footer.
+- Sparse slides can also rebalance instead: give the main content block the base-zone class `push` (`margin-top: auto`) so the leftover space splits evenly with the footer's own auto margin (the examples' `s01` pipeline does this), rather than leaving one dead band above the footer.
 - `&nbsp;` between digits and their nouns so numbers never separate from what they count.
 - Fill-in guidance for `{{TOKEN}}`s: outcome lines ≤2 wrapped lines, cost strings ≤14 chars, single numbers in state cards.
 

@@ -1,0 +1,259 @@
+{
+  "source": "components.md",
+  "components": [
+    {
+      "id": "header",
+      "title": "Header block",
+      "version": 1,
+      "zone": "base",
+      "variants": [
+        {
+          "name": "header",
+          "anchor": null,
+          "sha256": null,
+          "classes": []
+        }
+      ]
+    },
+    {
+      "id": "pipeline",
+      "title": "Numbered pipeline",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "pipeline",
+          "anchor": "slides:c:pipeline@1",
+          "sha256": "369ca4b262bf6f441a823ac572a3b6d386e1e7d01ce3a9af7774065d03ec8c7d",
+          "classes": [
+            "badge",
+            "disc",
+            "pipeline",
+            "rail",
+            "row",
+            "step"
+          ]
+        },
+        {
+          "name": "pipeline.final",
+          "anchor": "slides:c:pipeline.final@1",
+          "sha256": "13ef8d3be21894727a3949af13fb273b78a7a9794e345e511830377ca49b7c75",
+          "classes": [
+            "badge",
+            "disc",
+            "final",
+            "step"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "loopback",
+      "title": "Loopback bracket",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "loopback",
+          "anchor": "slides:c:loopback@1",
+          "sha256": "76f4a952defd78391f91bfbb30e206ede8909f6f533fb482a11e718d526a58ea",
+          "classes": [
+            "loopback"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reveal",
+      "title": "Progressive reveal",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "reveal",
+          "anchor": "slides:c:reveal@1",
+          "sha256": "2bbcc261906fcb3ab80f032de4768bc165440c31f89c29b276080e71e96c5db6",
+          "classes": [
+            "in",
+            "open",
+            "reveal",
+            "reveal-btn",
+            "reveal-panel"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tiles",
+      "title": "Value tiles",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "tiles",
+          "anchor": "slides:c:tiles@1",
+          "sha256": "56bfddd65724f7639bb02468ee11c1e601208c71eb2f9652886e49029b1b1808",
+          "classes": [
+            "tile",
+            "tiles"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "figures",
+      "title": "Evidence / figure strip",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "figures",
+          "anchor": "slides:c:figures@1",
+          "sha256": "df6761ea68673797ca30f9afd05ca45763aba69c1499711cd826c236263f78a2",
+          "classes": [
+            "cap",
+            "figure",
+            "figures",
+            "num"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cases",
+      "title": "Case cards",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "cases",
+          "anchor": "slides:c:cases@1",
+          "sha256": "4971cb85da5dc89fcac5805bbc5c32d0d8c60419247dbc65905dc08b6088639c",
+          "classes": [
+            "case",
+            "cases"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "states",
+      "title": "State cards",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "states",
+          "anchor": "slides:c:states@1",
+          "sha256": "fa1836a560b99fd69a95f2023af8fcaf2d1d170996e63b333b579f4a3570594f",
+          "classes": [
+            "count",
+            "label",
+            "state",
+            "states"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rows",
+      "title": "Stacked rows",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "rows",
+          "anchor": "slides:c:rows@1",
+          "sha256": "2d4288d6c0ba2969576ff55b0577751c95352f4937ba1bebff8f545ba1aa1d23",
+          "classes": [
+            "n",
+            "rowcard",
+            "rows"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "band",
+      "title": "Highlight band",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "band",
+          "anchor": "slides:c:band@1",
+          "sha256": "2051e270deb1f03ca9d60c7ff3920f450ca9fffe45258238f2d9890533d508a3",
+          "classes": [
+            "band"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mini-flow",
+      "title": "Mini-flow",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "mini-flow",
+          "anchor": "slides:c:mini-flow@1",
+          "sha256": "7727bc6c1ce0644758381fb5f97136d36027e80e61eebb6c14ab9019e90b2893",
+          "classes": [
+            "mini-flow",
+            "mini-step"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "divider",
+      "title": "Section divider",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "divider",
+          "anchor": "slides:c:divider@1",
+          "sha256": "b5205de35690f1795564468e476df5f809d641a667d8b3c7d10ad3372e752cf7",
+          "classes": [
+            "divider",
+            "section-h"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "footer",
+      "title": "Footer strip",
+      "version": 1,
+      "zone": "base",
+      "variants": [
+        {
+          "name": "footer",
+          "anchor": null,
+          "sha256": null,
+          "classes": []
+        }
+      ]
+    },
+    {
+      "id": "nav",
+      "title": "Nav / index slide (`s00`)",
+      "version": 1,
+      "zone": "component",
+      "variants": [
+        {
+          "name": "nav",
+          "anchor": "slides:c:nav@1",
+          "sha256": "6b7cf435cc6a8a6080b32676c55ca5217aaa74aa94cd6104b371f7877c85d900",
+          "classes": [
+            "deck-card",
+            "deck-grid",
+            "n"
+          ]
+        }
+      ]
+    }
+  ]
+}

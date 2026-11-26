@@ -111,6 +111,8 @@ h1 .hl { color: var(--accent); }
   font-size: 1.6cqw; color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .footer svg { width: 1.8cqw; height: 1.8cqw; flex: none; }
+/* main content block centred vertically: shares the leftover space with the footer */
+.slide > .push { margin-top: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -118,12 +120,14 @@ h1 .hl { color: var(--accent); }
 /* ==/slides:base== */
 
 /* Per-slide layout CSS goes below this line; it is NOT propagated. */
-.deck-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2cqw; margin-top: auto; }
+/* ==slides:c:nav@1== */
+.deck-grid { display: grid; grid-template-columns: repeat(var(--nav-cols, 3), 1fr); gap: 1.2cqw; margin-top: 3cqw; }
 .deck-card { display: flex; align-items: center; gap: 1.2cqw; background: var(--soft); border-radius: 10px; padding: 1.6cqw 1.4cqw; text-decoration: none; color: var(--ink); }
 .deck-card .n { width: 3.2cqw; height: 3.2cqw; border-radius: 50%; background: var(--deep); color: var(--slide); display: grid; place-items: center; font-size: 1.4cqw; font-weight: 700; font-variant-numeric: tabular-nums; flex: none; }
 .deck-card h3 { font-size: 1.75cqw; font-weight: 700; margin: 0; }
 .deck-card p { font-size: 1.3cqw; color: var(--muted); margin: .25cqw 0 0; }
 .deck-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* ==/slides:c:nav@1== */
 </style>
 </head>
 <body>
@@ -141,7 +145,7 @@ h1 .hl { color: var(--accent); }
   <h1>A small deck that <span class="hl">shows the system</span></h1>
   <p class="thesis">Three slides composed from the standard catalog, with a keyboard-driven index.</p>
 
-  <div class="deck-grid">
+  <div class="deck-grid push">
     <a class="deck-card" href="s01-rollout.html">
       <span class="n">01</span>
       <span><h3>How the rollout works</h3>

@@ -111,6 +111,8 @@ h1 .hl { color: var(--accent); }
   font-size: 1.6cqw; color: var(--muted); font-variant-numeric: tabular-nums;
 }
 .footer svg { width: 1.8cqw; height: 1.8cqw; flex: none; }
+/* main content block centred vertically: shares the leftover space with the footer */
+.slide > .push { margin-top: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -118,12 +120,17 @@ h1 .hl { color: var(--accent); }
 /* ==/slides:base== */
 
 /* Per-slide layout CSS goes below this line; it is NOT propagated. */
-.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2cqw; margin-top: 2.6cqw; }
+/* ==slides:c:tiles@1== */
+.tiles { display: grid; grid-template-columns: repeat(var(--tiles-cols, 4), 1fr); gap: 1.2cqw; margin-top: 2.6cqw; }
 .tile { background: var(--soft); border-radius: 10px; padding: 1.6cqw 1.4cqw; text-align: center; }
 .tile svg { width: 2.6cqw; height: 2.6cqw; color: var(--accent); }
 .tile h3 { font-size: 1.75cqw; font-weight: 700; margin: .7cqw 0 .35cqw; }
 .tile p { font-size: 1.4cqw; color: var(--muted); margin: 0; }
+/* ==/slides:c:tiles@1== */
+/* ==slides:c:band@1== */
 .band { background: var(--soft); border-left: 4px solid var(--accent); border-radius: 10px; padding: 1.6cqw 1.4cqw; margin-top: 1.6cqw; font-size: 1.75cqw; }
+/* ==/slides:c:band@1== */
+/* ==slides:c:reveal@1== */
 .reveal { margin-top: 1.6cqw; }
 .reveal-btn { display: inline-flex; align-items: center; gap: .6cqw; font-size: 1.4cqw; font-weight: 600; font-family: inherit; color: var(--accent); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: .55cqw 1.4cqw; cursor: pointer; }
 .reveal-btn svg { width: 1.4cqw; height: 1.4cqw; transition: transform .25s ease; }
@@ -132,9 +139,12 @@ h1 .hl { color: var(--accent); }
 .reveal-panel.open { display: block; }
 .reveal-panel.in { opacity: 1; transform: none; }
 .reveal-panel p { font-size: 1.55cqw; line-height: 1.35; color: var(--muted); margin: 0 0 .9cqw; }
+/* ==/slides:c:reveal@1== */
+/* ==slides:c:mini-flow@1== */
 .mini-flow { display: flex; justify-content: center; align-items: center; gap: 1cqw; }
 .mini-step { background: var(--soft); border-radius: 8px; padding: .8cqw 1.2cqw; font-size: 1.4cqw; font-weight: 600; }
 .mini-flow svg { width: 1.6cqw; height: 1.6cqw; color: var(--accent); flex: none; }
+/* ==/slides:c:mini-flow@1== */
 </style>
 </head>
 <body>

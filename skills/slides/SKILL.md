@@ -32,7 +32,7 @@ The gate: Phase 2 starts only when the user approves the briefing. That approval
 Read the assets **now, at the point of use** — never inline them into memory of this prompt:
 
 - `Read` `assets/design-system.md` — the normative visual contract.
-- `Read` `assets/components.md` — the component catalog; compose slides **only** from these pieces.
+- `Read` `assets/components.md` — the component catalog; compose slides **only** from these pieces, choosing each from its chooser table and use-when / don't-use-when rules.
 - `Read` `assets/criteria-content.md` and `assets/criteria-visual.md` — the copy rules and the hard visual gates.
 - Copy `assets/template.html` as the canonical starting point for every slide; take icon path data from `assets/icons.html` (hand-drawn SVG is banned; a missing glyph gets added to the gallery from Lucide first).
 - The composed examples in `assets/examples/` show what good output looks like.
@@ -42,7 +42,8 @@ Build rules:
 1. **Multi-file model:** one HTML file per slide (`s01-<slug>.html` …) plus an `s00-nav.html` index. **Ask the user for a target deck folder outside any tracked repo** if not stated. **Client decks never land in a tracked path.**
 2. **Per-deck localStorage key:** replace `<deck-key>` with the deck's slug in every file, identical across the deck.
 3. **Minimal-LLM principle (hard):** you write content and per-slide layout. Everything mechanical is a script's job — a token or shared-CSS change is edited **once** and fanned out with `python <skill-dir>/scripts/propagate.py <edited-slide> <deck-dir>`; print/PDF export is `python <skill-dir>/scripts/make_print.py <deck-dir> [--pdf]`. **Never hand-edit ten files for a CSS change.** The `==slides:*==` anchors are load-bearing; never strip them.
-4. **Real brand colors** come from the user's private brand-tokens source and are stamped by editing `--brand`/`--brand-dark` in one slide, then propagating. The tracked placeholder green must never survive into a client deck, and client hex values must never be written into any tracked file.
+4. **Catalog blocks verbatim:** each component's CSS goes into the per-slide zone exactly as `components.md` gives it, inside its `==slides:c:<id>[.<variant>]@<version>==` anchors, which declare the catalog pieces a slide uses; `assets/catalog.json` holds each block's hash. Per-slide settings go through the component's knobs (custom properties in a `style` attribute), never through edits inside a block. A catalog change edits `components.md`, bumps the component's version and regenerates the index with `python <skill-dir>/scripts/build_catalog.py`.
+5. **Real brand colors** come from the user's private brand-tokens source and are stamped by editing `--brand`/`--brand-dark` in one slide, then propagating. The tracked placeholder green must never survive into a client deck, and client hex values must never be written into any tracked file.
 
 ### Verification (mandatory, never eyeballed)
 

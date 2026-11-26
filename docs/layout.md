@@ -19,7 +19,7 @@ docs/layout.md                   this file
 - `skills/codebase-audit/` — `SKILL.md` and `audit_gate.py`; `audit-fleet` and `cleanup-fleet` are `SKILL.md` only.
 - `skills/learning-log/` — `SKILL.md` and `gather.py`.
 - `skills/prompt-audit/` — `SKILL.md`, `audit.py` (the entry point), `audit_lint.py` (its pure text and lint layer), `rules.md` and `sources.toml`.
-- `skills/slides/` — `SKILL.md`, `assets/` and `scripts/`; `assets/catalog.json` is generated from `assets/components.md` by `scripts/build_catalog.py` and never hand-edited.
+- `skills/slides/` — `SKILL.md`, `assets/` and `scripts/`; `skills/slides/assets/catalog.json` is generated from `skills/slides/assets/components.md` by `skills/slides/scripts/build_catalog.py` and never hand-edited.
 - `scripts/` — `static_ratchet.py` and `structure_ratchet.py` (vendored byte-for-byte, never edited here) and `static_ratchet_gate.py`.
 
 ## Where new code goes

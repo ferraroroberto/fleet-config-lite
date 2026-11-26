@@ -11,6 +11,7 @@ skills/<name>/SKILL.md           one folder per skill; its helpers sit beside it
 scripts/                         vendored scaffold ratchets and their gate wrappers
 tests/                           stdlib unittest, one file per module under test
 docs/layout.md                   this file
+docs/slides-adoption.md          moving a computer's existing decks onto the slides catalog
 ```
 
 ## Folders and subpackages

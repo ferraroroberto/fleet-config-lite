@@ -84,6 +84,8 @@ PROPERTY = re.compile(r"(?:^|;)\s*(?P<prop>-?[a-zA-Z][\w-]*)\s*:")
 #: class names carry the identity of a component, declared properties only its shape.
 LIKELY_MATCH, NEAR_MATCH = 0.6, 0.25
 
+VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+
 
 class CheckError(RuntimeError):
     """The lint could not establish a result; reported as exit 3, never as clean."""
@@ -113,10 +115,8 @@ class SlideResult:
     nested_in: Dict[str, Set[str]] = field(default_factory=dict)
 
 
-class _ClassNesting(HTMLParser):
+class ClassNesting(HTMLParser):
     """Every class used in the markup, and for each the classes of its ancestor elements."""
-
-    VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -132,7 +132,7 @@ class _ClassNesting(HTMLParser):
             self.stack.append((tag, classes))
 
     def handle_starttag(self, tag, attrs):
-        self._element(tag, attrs, opens=tag not in self.VOID)
+        self._element(tag, attrs, opens=tag not in VOID_TAGS)
 
     def handle_startendtag(self, tag, attrs):
         self._element(tag, attrs, opens=False)
@@ -257,7 +257,7 @@ def lint_slide(path: Path, anchors: Dict[str, Tuple[str, str]], zones: Dict[str,
         props = {p.strip().split(":")[0].strip() for p in decls.split(";") if p.strip()}
         if any(not p.startswith("--") for p in props):
             result.findings.append(f"style attribute sets more than knobs: '{decls.strip()}'")
-    nesting = _ClassNesting()
+    nesting = ClassNesting()
     nesting.feed(html)
     result.nested_in = nesting.nested_in
     result.classes_used = set(nesting.nested_in)
@@ -409,7 +409,7 @@ def inventory_report(deck: Path, results: List[SlideResult]) -> str:
     return "\n".join(lines)
 
 
-def _report_path_untracked(report: Path) -> bool:
+def report_path_untracked(report: Path) -> bool:
     """True only when *report* is outside any git work tree or ignored inside one."""
     deck = str(report.parent)
     try:
@@ -423,7 +423,7 @@ def _report_path_untracked(report: Path) -> bool:
 
 def write_inventory(deck: Path, results: List[SlideResult]) -> Path:
     report = deck / REPORT_FILE
-    if not _report_path_untracked(report):
+    if not report_path_untracked(report):
         raise CheckError(f"{deck} is inside a git work tree; the inventory report never goes in a tracked path")
     save_text(report, inventory_report(deck, results), encoding="utf-8", newline="\n")
     return report

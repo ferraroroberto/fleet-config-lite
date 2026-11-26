@@ -133,7 +133,7 @@ class InventoryTests(DeckFixture):
         self.assertIn("**Defined in:** s03-pilot.html", report)
 
     def test_inventory_refuses_a_tracked_deck_folder(self):
-        with mock.patch.object(lint_deck, "_report_path_untracked", return_value=False):
+        with mock.patch.object(lint_deck, "report_path_untracked", return_value=False):
             self.assertEqual(lint_deck.main([str(self.deck), "--inventory"]), 3)
         self.assertFalse((self.deck / lint_deck.REPORT_FILE).exists())
 

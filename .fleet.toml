@@ -30,7 +30,7 @@ comment_ratchet = { src = "scripts/comment_ratchet.py", sha = "48db2132dab2dfc38
 # which runs scripts/static_ratchet_gate.py, which wraps scripts/static_ratchet.py:
 # it fails on a duplicate block (jscpd via npx, Python and JS) or an unused
 # import/variable (ruff F401,F841) or a curated ruff bug/security finding (B and S
-# codes, S113 included) that is not in .static-ratchet-baseline.json.
+# codes, S113 included) that is not in .ratchets/static.json.
 # Needs Node and ruff on the interpreter that runs the tests; a detector that cannot
 # run exits 3, which fails the run as NOT CONFIRMED. Procedure + limits:
 # project-scaffolding docs/static-ratchet.md.
@@ -49,7 +49,7 @@ baseline = ".ratchets/static.json"
 # run (python -m unittest discover -s tests) includes tests/test_structure_ratchet.py,
 # which runs scripts/structure_ratchet.py: it fails when a new file passes 1,000
 # lines, a new function 100 lines or a flat directory 40 modules, when a baselined
-# offender grows past its size in .structure-ratchet-baseline.json, and when the root
+# offender grows past its size in .ratchets/structure.json, and when the root
 # folders do not match `shape` plus `extra_roots`. Existing offenders are baselined at
 # today's size, never excluded. Exit 3 (git unusable, an unparseable file, an unknown
 # shape) fails the run as NOT CONFIRMED. Procedure: project-scaffolding
@@ -62,7 +62,7 @@ baseline = ".ratchets/structure.json"
 # files. The unit run (python -m unittest discover -s tests) includes
 # tests/test_instruction_ratchet.py, which runs scripts/instruction_ratchet.py: it fails
 # when a SKILL.md (or a doc one links) gains a hit on a deterministic prompt-audit rule,
-# or passes a size cap, beyond .instruction-ratchet-baseline.json. This repo keeps its
+# or passes a size cap, beyond .ratchets/instruction.json. This repo keeps its
 # skills under skills/ and has no CLAUDE.md or AGENTS.md. Existing hits are baselined at
 # today's count, never excluded. Exit 3 (git unusable, an unreadable file, an unclosed
 # fence, an unreadable skill description) fails the run as NOT CONFIRMED. Procedure:
@@ -81,7 +81,7 @@ repeated_text_words = 12
 # references. The unit run (python -m unittest discover -s tests) includes
 # tests/test_doc_refs_ratchet.py, which runs scripts/doc_refs_ratchet.py: it fails when
 # README.md or docs/**/*.md names a repo path, `python -m` module or relative link that
-# does not exist, beyond .doc-refs-ratchet-baseline.json. This repo declares no `port`,
+# does not exist, beyond .ratchets/doc-refs.json. This repo declares no `port`,
 # so ports are not checked, and it has no CLAUDE.md. Existing dangling references are
 # baselined, never excluded. Exit 3 (git
 # unusable, a file that is not UTF-8, an unclosed fence) fails the run as NOT CONFIRMED.
@@ -97,7 +97,7 @@ allow_refs = [".github/copilot-instructions.md"]
 # references. The unit run (python -m unittest discover -s tests) includes
 # tests/test_dead_code_ratchet.py, which runs scripts/dead_code_ratchet.py: it fails when
 # a tracked Python file gains a function, class or method whose name appears nowhere else
-# in the tree, beyond .dead-code-ratchet-baseline.json. Every vendored file is declared
+# in the tree, beyond .ratchets/dead-code.json. Every vendored file is declared
 # in [vendored] so its unused API is not reported as this repo's. Skill
 # scripts are plain functions called by name, so no `allow` or `entry_decorators` is
 # needed. Exit 3 (git unusable, a .py file that cannot be read or parsed) fails the run
@@ -111,7 +111,7 @@ allow    = []
 # one AST rule can check. The unit run (python -m unittest discover -s tests) includes
 # tests/test_conventions_ratchet.py, which runs scripts/conventions_ratchet.py: it fails
 # when a file's count for an enabled rule rises above its entry in
-# .conventions-ratchet-baseline.json. Enabled: no-window (skills spawn on
+# .ratchets/conventions.json. Enabled: no-window (skills spawn on
 # Windows), logging-not-print (skills/ holds the library code) and
 # no-drive-path (nothing here may name a machine's drive), subprocess-timeout (every
 # subprocess.run/call/check_* passes timeout=), host-identity (a test never reads the real
@@ -131,7 +131,7 @@ print_paths = ["skills/"]
 # [runtime_write_ratchet] -- scripts/runtime_write_ratchet.py fails when a tracked
 # Python file gains a write target (open for writing, Path.write_*, mkdir, a log
 # FileHandler, sqlite3.connect, a copy destination) whose path resolves under a code
-# folder, beyond .runtime-write-ratchet-baseline.json; a new target it cannot resolve
+# folder, beyond .ratchets/runtime-write.json; a new target it cannot resolve
 # is "not confirmed" (exit 3), never clean. The same script brackets the test stages
 # (--snapshot before, --probe after) and fails on any untracked or ignored file the
 # run left under a code folder. Mechanism: project-scaffolding docs/runtime-write-ratchet.md.
@@ -144,7 +144,7 @@ baseline = ".ratchets/runtime-write.json"
 # tests/test_docs_ratchet.py, which runs scripts/docs_ratchet.py: it fails when the root
 # README.md passes `readme_max_bytes` or a README.md / docs/**/*.md file gains a history
 # marker (an issue reference, a dated heading or a changelog heading) beyond its entry in
-# .docs-ratchet-baseline.json. Existing markers are baselined, never excluded. Exit 3
+# .ratchets/docs.json. Existing markers are baselined, never excluded. Exit 3
 # (git unusable, a file that is not UTF-8, an unclosed fence or HTML comment) fails the
 # run as NOT CONFIRMED. Procedure: project-scaffolding docs/docs-ratchet.md.
 [docs_ratchet]
@@ -155,7 +155,7 @@ baseline = ".ratchets/docs.json"
 # comments. The unit run (python -m unittest discover -s tests) includes
 # tests/test_comment_ratchet.py, which runs scripts/comment_ratchet.py: it fails when a
 # .py, .js, .css or .ps1 file gains a `#NNN` issue reference inside a comment beyond its
-# entry in .comment-ratchet-baseline.json. A comment states why the code is the way it is
+# entry in .ratchets/comment.json. A comment states why the code is the way it is
 # now; how it got there lives in the issue, the PR and git log. Every vendored
 # destination is left out automatically. Existing references are baselined, never
 # excluded. Exit 3 (git unusable, a file that cannot be scanned) fails the run as
@@ -169,7 +169,7 @@ history_phrases = true
 # [request_budget_ratchet] -- the scaffold's baseline-and-ratchet stage for polling and
 # background-loop waste. The unit run (python -m unittest discover -s tests) includes
 # tests/test_request_budget_ratchet.py, which runs scripts/request_budget_ratchet.py: it
-# fails when a file's count for a rule rises above .request-budget-ratchet-baseline.json.
+# fails when a file's count for a rule rises above .ratchets/request-budget.json.
 # This repo serves no HTTP and ships no browser code under the default browser_paths, so
 # fixed-rate-poll, poll-floor, scan-per-request and timing-middleware have nothing to read:
 # scan-per-request prints OFF (no handler_dirs) and the poll helper and timing middleware

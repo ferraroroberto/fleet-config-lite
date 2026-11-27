@@ -3,12 +3,8 @@
 A path that is a parameter or a CLI argument (``--out``, ``out_dir``, ``log_path``)
 cannot be followed statically, so each such write would need its own exempt marker.
 These writers take the path, refuse it at runtime when it resolves, links and junctions
-followed, under one of the code folders the ratchet guards, and then write. The guarantee
+followed, under one of ``CODE_FOLDERS``, and then write. The guarantee
 a marker only claimed ("never beside the code") is enforced on every call.
-
-``hooks/state`` is the one in-tree exception: ``~/.claude/hooks`` is a junction into this
-repo, so the live hooks-state folder resolves under ``hooks/``. It is gitignored runtime
-state, not code.
 
 stdlib only.
 """
@@ -23,11 +19,9 @@ from typing import IO, Any, Union
 
 PathLike = Union[str, "os.PathLike[str]"]
 
-#: `[runtime_write_ratchet] code_folders` in `.fleet.toml`; a test holds the two equal.
+#: Top-level folders of the checkout that no runtime output may land in. The guard's own
+#: list: the runtime-write ratchet scans the folders its own config or default names.
 CODE_FOLDERS = ("hooks", "skills", "scripts", ".claude")
-
-#: Gitignored runtime state that lives under a code folder (see the module docstring).
-LIVE_STATE_FOLDERS = ("hooks/state",)
 
 
 #: The checkout this copy lives in; a copied tree guards its own code folders.
@@ -42,13 +36,11 @@ def _inside(path: Path, folder: Path) -> bool:
 def checked(path: PathLike) -> Path:
     """``path`` resolved, or ``ValueError`` when it sits under a code folder."""
     resolved = Path(path).expanduser().resolve()
-    if any(_inside(resolved, REPO_ROOT / live) for live in LIVE_STATE_FOLDERS):
-        return resolved
     for name in CODE_FOLDERS:
         if _inside(resolved, REPO_ROOT / name):
             raise ValueError(
                 f"Refusing to write under the code folder {REPO_ROOT / name}: {resolved}. "
-                "Runtime output belongs in the hooks state dir, a temp folder or the caller's own folder."
+                "Runtime output belongs in a temp folder or the caller's own folder."
             )
     return resolved
 

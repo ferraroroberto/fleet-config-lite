@@ -39,6 +39,10 @@ class GuardedWriterTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     rf.checked(rf.REPO_ROOT / name)
 
+    def test_no_path_under_a_code_folder_is_exempt(self):
+        with self.assertRaises(ValueError):
+            rf.checked(rf.REPO_ROOT / "hooks" / "state" / "x.txt")
+
     def test_refusal_creates_nothing(self):
         folder = rf.REPO_ROOT / "skills" / "_never_created"
         with self.assertRaises(ValueError):

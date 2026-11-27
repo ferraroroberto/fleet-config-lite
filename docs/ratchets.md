@@ -48,18 +48,31 @@ plain functions called by name, so no `entry_decorators` is configured and
 
 ## conventions
 
-Enabled rules: `no-window` (skills spawn processes on Windows),
-`logging-not-print` (scoped to `skills/`, the library code) and
-`no-drive-path` (nothing here may name a machine's drive) and
-`subprocess-timeout` (a `subprocess.run/call/check_call/check_output` passes
-`timeout=`, or carries a `# subprocess-timeout-exempt: <reason>` marker for a
-child that is meant to run unbounded) and `browser-per-iteration` (a Playwright
-browser or context opened inside a loop) and `host-identity` (a test reads the real
-account name or home folder, which passes on this machine and fails on another host; a
-test sets `HOME`/`USERPROFILE` to a temp folder and compares against that, or carries a
-`# host-identity-exempt: <reason>` marker for a guard over the live install) and `git-wrapper` (every `git` spawn goes
-through `skills/_lib/git_run.py`, which sets `GIT_OPTIONAL_LOCKS=0`). `secret-compare`
-stays off — the repo has no secret-compare helper for it to route through. There is no `[e2e]` router table, so the baseline file
+The enabled rules are the `rules` key of `[conventions_ratchet]` in
+`.fleet.toml`:
+
+| Rule | Hit |
+|---|---|
+| `no-window` | a spawn with no `creationflags=` (skills spawn processes on Windows) |
+| `logging-not-print` | `print(...)` in a library module under `skills/` (`print_paths`); command-line modules print by design |
+| `no-drive-path` | a string literal starting with a drive letter: nothing here may name a machine's drive |
+| `git-wrapper` | a `git` spawn outside `skills/_lib/git_run.py`, which sets `GIT_OPTIONAL_LOCKS=0` |
+| `subprocess-timeout` | a `subprocess.run/call/check_call/check_output` with no `timeout=` |
+| `browser-per-iteration` | a Playwright browser or context opened inside a loop |
+| `path-sep` | text a regex parsed, joined onto a path with its backslashes kept; normalise it first |
+| `host-identity` | a test reading the real account name or home folder, which fails on another host; set `HOME`/`USERPROFILE` to a temp folder and compare against that |
+| `state-literal` | a lifecycle string (`"running"`, `"failed"`) compared with or stored in a state-named variable, attribute or key |
+| `state-set-repeat` | the same set of two or more lifecycle strings spelled out in more than one module |
+| `state-write` | a boolean or `None` written to a lifecycle-named attribute or key from more than one module |
+
+Test modules are held only to `no-window`, `browser-per-iteration` and
+`host-identity`, and `host-identity` applies to nothing else. The three
+`state-*` rules flag implicit state machines: a module declared under
+`[[state_machines]]` is never reported, and none is declared here. A single
+call keeps its exception with a `# <rule>-exempt: <reason>` comment, such as a
+child that is meant to run unbounded or a test guarding the live install.
+`secret-compare` stays off, because the repo has no secret-compare helper for
+it to route through. There is no `[e2e]` router table, so the baseline file
 needs no `tier` rule.
 
 ## docs

@@ -1,6 +1,6 @@
 # Layout
 
-Where code goes in this repo. The Copilot hooks, the chief and the lane skills live in app-launcher-lite's `copilot/` folder, not here. The shape is `skills-governance` (declared in `.fleet.toml`); `scripts/structure_ratchet.py` holds the root folders to it and holds file size (1,000 lines), function length (100 lines) and directory width (40 modules) to the baseline in `.structure-ratchet-baseline.json`. The baseline is empty; a file nearing a limit splits into a sibling module instead of growing.
+Where code goes in this repo. The Copilot hooks, the chief and the lane skills live in app-launcher-lite's `copilot/` folder, not here. The shape is `skills-governance` (declared in `.fleet.toml`); `scripts/structure_ratchet.py` holds the root folders to it and holds file size (1,000 lines), function length (100 lines) and directory width (40 modules) to the baseline in `.ratchets/structure.json`. The baseline is empty; a file nearing a limit splits into a sibling module instead of growing.
 
 ```
 .fleet.toml                      architecture-map card, [vendored] table, ratchet config
@@ -8,9 +8,11 @@ install.ps1                      idempotent installer into ~/.copilot/
 global-instructions.md           agent-agnostic global instructions the installer links
 README.md                        index: install, run, gate, one line per feature
 skills/<name>/SKILL.md           one folder per skill; its helpers sit beside it
-scripts/                         vendored scaffold ratchets and their gate wrappers
+scripts/                         vendored scaffold ratchets and helpers, plus the static gate wrapper
+.ratchets/<name>.json            one committed baseline per ratchet
 tests/                           stdlib unittest, one file per module under test
 docs/layout.md                   this file
+docs/ratchets.md                 what differs per ratchet
 docs/slides-adoption.md          moving a computer's existing decks onto the slides catalog
 ```
 
@@ -21,7 +23,7 @@ docs/slides-adoption.md          moving a computer's existing decks onto the sli
 - `skills/learning-log/` — `SKILL.md` and `gather.py`.
 - `skills/prompt-audit/` — `SKILL.md`, `audit.py` (the entry point), `audit_lint.py` (its pure text and lint layer), `rules.md` and `sources.toml`.
 - `skills/slides/` — `SKILL.md`, `assets/` and `scripts/`; `skills/slides/assets/catalog.json` is generated from `skills/slides/assets/components.md` by `skills/slides/scripts/build_catalog.py` and never hand-edited.
-- `scripts/` — `static_ratchet.py` and `structure_ratchet.py` (vendored byte-for-byte, never edited here) and `static_ratchet_gate.py`.
+- `scripts/` — every ratchet and ratchet helper in `.fleet.toml`'s `[vendored]` table (vendored byte-for-byte, never edited here), and `static_ratchet_gate.py`, the gate wrapper around `static_ratchet.py`.
 
 ## Where new code goes
 
